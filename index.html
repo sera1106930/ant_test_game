@@ -4,18 +4,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ant Simulation</title>
+    <title>Cyberpunk Ant Exploration</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #0f172a;
             --text-color: #f8fafc;
-            --accent-color: #38bdf8;
-            --accent-glow: rgba(56, 189, 248, 0.5);
-            --btn-bg: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-            --btn-hover: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+            --accent-cyan: #22d3ee;
+            --accent-blue: #3b82f6;
+            --accent-glow: rgba(34, 211, 238, 0.6);
+            --btn-bg: rgba(15, 23, 42, 0.8);
+            --btn-border: rgba(34, 211, 238, 0.3);
+            --btn-hover: rgba(34, 211, 238, 0.1);
         }
 
         * {
@@ -29,217 +31,447 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             overflow: hidden;
-            /* Prevent scrollbars */
             width: 100vw;
             height: 100vh;
+            user-select: none;
         }
 
-        #gameCanvas {
-            display: block;
+        /* Game Container */
+        #game-container {
+            position: relative;
             width: 100%;
             height: 100%;
         }
 
-        /* UI Overlay */
-        .ui-layer {
+        canvas {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none;
-            /* Allow clicks to pass through to canvas if needed, though button needs events */
         }
 
-        .counter-container {
+        /* Layer Z-Indices */
+        #bgCanvas {
+            z-index: 1;
+        }
+
+        /* Circuit Map */
+        #fogCanvas {
+            z-index: 2;
+            opacity: 1;
+        }
+
+        /* Fog overlay */
+        #antCanvas {
+            z-index: 3;
+        }
+
+        /* Ants + Particles */
+        #uiLayer {
+            z-index: 10;
+            pointer-events: none;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* UI Elements */
+        .hud-panel {
             position: absolute;
             top: 2rem;
             left: 2rem;
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(8px);
             padding: 1rem 1.5rem;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--btn-border);
+            border-left: 4px solid var(--accent-cyan);
+            border-radius: 4px;
+            box-shadow: 0 0 20px rgba(34, 211, 238, 0.1);
             pointer-events: auto;
+            min-width: 200px;
         }
 
-        .counter-label {
-            font-size: 0.875rem;
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
             color: #94a3b8;
-            margin-bottom: 0.25rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.1em;
             font-weight: 600;
         }
 
-        #antCount {
-            font-size: 1.5rem;
+        .stat-value {
+            font-size: 1.25rem;
             font-weight: 700;
             color: var(--text-color);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+            font-family: monospace;
+        }
+
+        .accent-text {
+            color: var(--accent-cyan);
         }
 
         #spawnBtn {
             position: absolute;
             bottom: 2rem;
             right: 2rem;
-            background: var(--btn-bg);
-            color: white;
-            border: none;
-            padding: 1rem 2rem;
-            border-radius: 9999px;
-            /* Pill shape */
+            background: rgba(15, 23, 42, 0.9);
+            color: var(--accent-cyan);
+            border: 1px solid var(--accent-cyan);
+            padding: 0.8rem 1.5rem;
+            border-radius: 2px;
+            /* Techy sharper corners */
             font-weight: 600;
-            font-size: 1rem;
+            font-size: 0.9rem;
             cursor: pointer;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, background 0.2s ease;
+            box-shadow: 0 0 10px rgba(34, 211, 238, 0.2);
+            transition: all 0.2s ease;
             pointer-events: auto;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.75rem;
         }
 
         #spawnBtn:hover {
-            background: var(--btn-hover);
+            background: rgba(34, 211, 238, 0.1);
+            box-shadow: 0 0 20px rgba(34, 211, 238, 0.4);
             transform: translateY(-2px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
 
         #spawnBtn:active {
             transform: translateY(0);
         }
 
-        /* SVG Icon style */
         .icon {
-            width: 1.25rem;
-            height: 1.25rem;
+            width: 1.2em;
+            height: 1.2em;
             fill: currentColor;
+            filter: drop-shadow(0 0 2px currentColor);
+        }
+
+        /* Scanline Effect Overlay (Optional, adds retro feel) */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(to bottom,
+                    transparent 0px,
+                    transparent 2px,
+                    rgba(0, 0, 0, 0.1) 3px);
+            pointer-events: none;
+            z-index: 9;
+            opacity: 0.3;
         }
     </style>
 </head>
 
 <body>
 
-    <canvas id="gameCanvas"></canvas>
+    <div id="game-container">
+        <!-- Layer 1: Background Circuit Map -->
+        <canvas id="bgCanvas"></canvas>
+        <!-- Layer 2: Fog (Black Overlay) -->
+        <canvas id="fogCanvas"></canvas>
+        <!-- Layer 3: Ants -->
+        <canvas id="antCanvas"></canvas>
 
-    <div class="ui-layer">
-        <div class="counter-container">
-            <div class="counter-label">Active Ants</div>
-            <div id="antCount">0</div>
+        <div class="scanlines"></div>
+
+        <div id="uiLayer">
+            <div class="hud-panel">
+                <div class="stat-row">
+                    <span class="stat-label">System Agents</span>
+                    <span class="stat-value" id="antCount">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Data Recovered</span>
+                    <span class="stat-value"><span id="explorePercent">0</span>%</span>
+                </div>
+            </div>
+
+            <button id="spawnBtn">
+                <svg class="icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
+                </svg>
+                Deploy Unit
+            </button>
         </div>
-
-        <button id="spawnBtn">
-            <svg class="icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
-            </svg>
-            產生第二次新的測試點
-        </button>
     </div>
 
     <script>
+        /**
+         * ------------------------------------------------------------------
+         * CONFIGURATION & CONSTANTS
+         * ------------------------------------------------------------------
+         */
+        const CONFIG = {
+            colors: {
+                bg: '#0f172a',
+                fog: '#000000', // Solid black fog
+                ant: '#22d3ee',
+                antGlow: '#22d3ee',
+                circuitLine: 'rgba(56, 189, 248, 0.15)',
+                circuitNode: 'rgba(56, 189, 248, 0.3)'
+            },
+            ant: {
+                size: 2,
+                speedMin: 1.5,
+                speedMax: 3.5,
+                turnSpeed: 0.15,
+                sensorDist: 20, // Distance to check for fog
+                shadowBlur: 15
+            },
+            spawnInterval: 5000 // ms
+        };
+
+        /**
+         * ------------------------------------------------------------------
+         * CORE CLASSES
+         * ------------------------------------------------------------------
+         */
+
         class Ant {
-            constructor(canvasWidth, canvasHeight) {
-                this.x = Math.random() * canvasWidth;
-                this.y = Math.random() * canvasHeight;
-                // Random angle in radians
+            constructor(w, h) {
+                // Spawn at center initially or random? Let's go with Center for "Base" feel
+                // User said "点击产生：保留原本按鈕", original was random. Let's do random but near center maybe?
+                // Or just full random. Let's keep full random for Exploration.
+                this.x = Math.random() * w;
+                this.y = Math.random() * h;
                 this.angle = Math.random() * Math.PI * 2;
-                // Speed between 1 and 3
-                this.speed = 1 + Math.random() * 2;
-                // Random turn variance (how quickly it can change direction)
-                this.turnSpeed = 0.1;
-                this.size = 3;
+                this.speed = CONFIG.ant.speedMin + Math.random() * (CONFIG.ant.speedMax - CONFIG.ant.speedMin);
+                this.turnSpeed = CONFIG.ant.turnSpeed;
             }
 
-            update(width, height) {
-                // Randomly steer left or right slightly
+            update(w, h, fogCtx) {
+                // 1. Simple AI: Wander with randomness
                 this.angle += (Math.random() - 0.5) * this.turnSpeed;
 
-                // Move
+                // 2. Move
                 this.x += Math.cos(this.angle) * this.speed;
                 this.y += Math.sin(this.angle) * this.speed;
 
-                // Bounce off walls
-                if (this.x < 0) {
-                    this.x = 0;
-                    this.angle = Math.PI - this.angle;
-                } else if (this.x > width) {
-                    this.x = width;
-                    this.angle = Math.PI - this.angle;
-                }
+                // 3. Bounce Walls
+                if (this.x < 0) { this.x = 0; this.angle = Math.PI - this.angle; }
+                else if (this.x > w) { this.x = w; this.angle = Math.PI - this.angle; }
+                if (this.y < 0) { this.y = 0; this.angle = -this.angle; }
+                else if (this.y > h) { this.y = h; this.angle = -this.angle; }
 
-                if (this.y < 0) {
-                    this.y = 0;
-                    this.angle = -this.angle;
-                } else if (this.y > height) {
-                    this.y = height;
-                    this.angle = -this.angle;
-                }
+                // 4. Reveal Fog (The "Mining" logic)
+                // We draw a circle on the destination-out fog canvas at our position
+                fogCtx.globalCompositeOperation = 'destination-out';
+                fogCtx.fillStyle = 'rgba(0,0,0,1)';
+                fogCtx.beginPath();
+                // A bit larger than the ant to clear a path
+                fogCtx.arc(this.x, this.y, 25, 0, Math.PI * 2);
+                fogCtx.fill();
+                // Reset composition DO NOT FORGET
+                fogCtx.globalCompositeOperation = 'source-over';
             }
 
             draw(ctx) {
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fillStyle = '#38bdf8'; // Sky blue
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = 'rgba(56, 189, 248, 0.8)';
+                ctx.arc(this.x, this.y, CONFIG.ant.size, 0, Math.PI * 2);
+                ctx.fillStyle = CONFIG.colors.ant;
+                ctx.shadowBlur = CONFIG.ant.shadowBlur;
+                ctx.shadowColor = CONFIG.colors.antGlow;
                 ctx.fill();
-                ctx.shadowBlur = 0; // Reset for performance if needed, or keep for effect
-                ctx.closePath();
+                ctx.shadowBlur = 0; // Reset
             }
         }
 
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const antCountDisplay = document.getElementById('antCount');
-        const spawnBtn = document.getElementById('spawnBtn');
+        class Game {
+            constructor() {
+                // Canvases
+                this.bgCanvas = document.getElementById('bgCanvas');
+                this.bgCtx = this.bgCanvas.getContext('2d');
 
-        let ants = [];
-        let animationId;
+                this.fogCanvas = document.getElementById('fogCanvas');
+                this.fogCtx = this.fogCanvas.getContext('2d');
 
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+                this.antCanvas = document.getElementById('antCanvas');
+                this.antCtx = this.antCanvas.getContext('2d');
+
+                // State
+                this.ants = [];
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.autoSpawnTimer = null;
+                this.lastExplorationCheck = 0;
+
+                // Bindings
+                this.resize = this.resize.bind(this);
+                this.loop = this.loop.bind(this);
+                this.spawnAnt = this.spawnAnt.bind(this);
+
+                // UI
+                this.uiAntCount = document.getElementById('antCount');
+                this.uiExplorePercent = document.getElementById('explorePercent');
+
+                // Init
+                window.addEventListener('resize', this.resize);
+                document.getElementById('spawnBtn').addEventListener('click', () => this.spawnAnt());
+
+                this.resize();
+                // Fill Fog Initially
+                this.resetFog();
+                // Generate Map
+                this.generateMap();
+
+                // Start Loop
+                requestAnimationFrame(this.loop);
+
+                // Auto Spawn
+                setInterval(this.spawnAnt, CONFIG.spawnInterval);
+            }
+
+            resize() {
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+
+                [this.bgCanvas, this.fogCanvas, this.antCanvas].forEach(c => {
+                    // Save old fog data if we want to preserve exploration on resize
+                    // For now, simpler to just resize. Fog might clear or stretch.
+                    // Let's just reset props.
+                    c.width = this.width;
+                    c.height = this.height;
+                });
+
+                // Re-gen static stuff on resize
+                this.generateMap();
+                this.resetFog(); // Warning: This resets progress. In a real game, we'd scale the bitmap.
+            }
+
+            resetFog() {
+                this.fogCtx.globalCompositeOperation = 'source-over';
+                this.fogCtx.fillStyle = CONFIG.colors.fog;
+                this.fogCtx.fillRect(0, 0, this.width, this.height);
+            }
+
+            generateMap() {
+                const ctx = this.bgCtx;
+                ctx.clearRect(0, 0, this.width, this.height);
+
+                // Draw "Digital Circuit Lines"
+                const nodeCount = 40;
+                const nodes = [];
+
+                // Create random nodes
+                for (let i = 0; i < nodeCount; i++) {
+                    nodes.push({
+                        x: Math.random() * this.width,
+                        y: Math.random() * this.height
+                    });
+                }
+
+                ctx.strokeStyle = CONFIG.colors.circuitLine;
+                ctx.lineWidth = 1;
+                ctx.lineCap = 'round';
+
+                // Connect nodes if close
+                ctx.beginPath();
+                for (let i = 0; i < nodes.length; i++) {
+                    for (let j = i + 1; j < nodes.length; j++) {
+                        const dist = Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y);
+                        if (dist < 200) {
+                            ctx.moveTo(nodes[i].x, nodes[i].y);
+                            ctx.lineTo(nodes[j].x, nodes[j].y);
+                        }
+                    }
+                }
+                ctx.stroke();
+
+                // Draw Nodes
+                ctx.fillStyle = CONFIG.colors.circuitNode;
+                nodes.forEach(node => {
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+
+            spawnAnt() {
+                this.ants.push(new Ant(this.width, this.height));
+                this.updateUI();
+            }
+
+            updateUI() {
+                this.uiAntCount.textContent = this.ants.length;
+            }
+
+            checkExploration() {
+                // Expensive operation! Do sparingly.
+                // Sample pixel data from fog canvas.
+                // 100x100 sample grid is enough for estimation.
+                const sampleRes = 50;
+                const stepX = Math.floor(this.width / sampleRes);
+                const stepY = Math.floor(this.height / sampleRes);
+
+                if (stepX === 0 || stepY === 0) return;
+
+                // Optimized: read pixels only at specific points? 
+                // getImageData is slow for full canvas.
+                // Let's grab small thumbnail? 
+                // Actually, for "modern" devices, getting image data of 1000x1000 is okay-ish once a second.
+                // But let's try the scaling trick: Draw fog to a 100x1 scale canvas, then count pixels?
+                // No, creating new canvas is overhead.
+
+                // Let's just do it every 60 frames (1 sec)
+                const id = this.fogCtx.getImageData(0, 0, this.width, this.height).data;
+                let clearPixels = 0;
+                // Check alpha every 100th pixel (stride 4 * 100)
+                const stride = 4 * 100;
+                let totalSamples = 0;
+
+                for (let i = 3; i < id.length; i += stride) {
+                    // i is alpha channel
+                    if (id[i] < 10) { // If alpha is low (erased)
+                        clearPixels++;
+                    }
+                    totalSamples++;
+                }
+
+                const percent = ((clearPixels / totalSamples) * 100).toFixed(1);
+                this.uiExplorePercent.textContent = percent;
+            }
+
+            loop(timestamp) {
+                // Clear Ant Layer ONLY
+                this.antCtx.clearRect(0, 0, this.width, this.height);
+
+                // Update Ants
+                this.ants.forEach(ant => {
+                    ant.update(this.width, this.height, this.fogCtx);
+                    ant.draw(this.antCtx);
+                });
+
+                // Periodic Exploration Check (every ~1s)
+                if (timestamp - this.lastExplorationCheck > 1000) {
+                    this.checkExploration();
+                    this.lastExplorationCheck = timestamp;
+                }
+
+                requestAnimationFrame(this.loop);
+            }
         }
 
-        function createAnt() {
-            const ant = new Ant(canvas.width, canvas.height);
-            ants.push(ant);
-            updateCounter();
-        }
-
-        function updateCounter() {
-            antCountDisplay.textContent = ants.length;
-        }
-
-        function animate() {
-            // Clear screen with a slight fade trail effect? 
-            // Or solid clear for crisp movement. Let's do solid for now.
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ants.forEach(ant => {
-                ant.update(canvas.width, canvas.height);
-                ant.draw(ctx);
-            });
-
-            animationId = requestAnimationFrame(animate);
-        }
-
-        // Event Listeners
-        window.addEventListener('resize', resizeCanvas);
-
-        spawnBtn.addEventListener('click', () => {
-            // Spawn 1 ant
-            createAnt();
-
-            // Optional: Spawn burst for better feel? User said "generate an ant", implying singular.
-            // Let's stick to 1 per click as requested.
-        });
-
-        // Initialize
-        resizeCanvas();
-        animate();
+        // Boot
+        const game = new Game();
 
     </script>
 </body>
