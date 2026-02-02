@@ -34,7 +34,7 @@
             pointer-events: none;
         }
 
-        .hud {
+        .hud-left {
             position: absolute;
             top: 2rem;
             left: 2rem;
@@ -43,6 +43,21 @@
             padding: 1rem;
             border-left: 4px solid var(--accent-cyan);
             pointer-events: auto;
+        }
+
+        .hud-right {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 1rem;
+            border-right: 4px solid var(--accent-cyan);
+            text-align: right;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
         }
 
         .controls {
@@ -79,6 +94,28 @@
             font-size: 0.8rem;
             opacity: 0.7;
         }
+
+        .timer-val {
+            font-family: monospace;
+            font-size: 1.5rem;
+            color: var(--accent-cyan);
+            text-shadow: 0 0 10px var(--accent-cyan);
+        }
+
+        .progress-bar {
+            width: 200px;
+            height: 6px;
+            background: #1e293b;
+            margin-top: 5px;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-cyan);
+            width: 0%;
+            transition: width 0.2s;
+        }
     </style>
 </head>
 
@@ -89,10 +126,21 @@
         <canvas id="antCanvas"></canvas>
         <div id="uiLayer">
             <div class="mock-indicator" id="modeLabel">Connecting...</div>
-            <div class="hud">
+
+            <div class="hud-left">
                 <div>SYSTEM STATUS: <span style="color:#22d3ee">ONLINE</span></div>
                 <div>AGENTS: <span id="antCount">0</span></div>
             </div>
+
+            <div class="hud-right">
+                <div style="font-size: 0.8rem; opacity: 0.8;">EXPLORATION TIMER</div>
+                <div id="timerDisplay" class="timer-val">00:00.00</div>
+                <div style="font-size: 0.8rem; margin-top: 5px;">COVERAGE: <span id="explorePct">0</span>%</div>
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+            </div>
+
             <div class="controls">
                 <button id="resetBtn">REGENERATE NET</button>
                 <button id="spawnBtn">DEPLOY AGENT</button>
@@ -129,25 +177,18 @@
             }
         };
 
-        // ------------------------------------------------------------------
-        // PHYSICS ENGINE
-        // ------------------------------------------------------------------
         const Physics = {
             isPointInPolygon: function (point, vs) {
-                // ray-casting algorithm based on
-                // https://github.com/substack/point-in-polygon
                 var x = point.x, y = point.y;
                 var inside = false;
                 for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
                     var xi = vs[i].x, yi = vs[i].y;
                     var xj = vs[j].x, yj = vs[j].y;
-                    var intersect = ((yi > y) != (yj > y))
-                        && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                    var intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
                     if (intersect) inside = !inside;
                 }
                 return inside;
             },
-
             isValid: function (x, y, rooms) {
                 for (let r of rooms) {
                     const poly = r.points || r.poly;
@@ -157,9 +198,6 @@
             }
         };
 
-        // ------------------------------------------------------------------
-        // RENDERER
-        // ------------------------------------------------------------------
         class GameClient {
             constructor() {
                 this.canvases = {
@@ -177,7 +215,7 @@
                 this.resize();
 
                 this.mapData = await API.getMap();
-                MockServer.map = this.mapData; // Sync for Client Prediction
+                MockServer.map = this.mapData;
 
                 this.drawStaticMap();
                 this.initFog();
@@ -260,7 +298,27 @@
                 try {
                     const state = await API.getState();
                     this.agents = state.agents || [];
+
+                    // UI Updates
                     document.getElementById('antCount').innerText = this.agents.length;
+
+                    // Timer UI
+                    const ms = state.time || 0;
+                    const mins = Math.floor(ms / 60000).toString().padStart(2, '0');
+                    const secs = Math.floor((ms % 60000) / 1000).toString().padStart(2, '0');
+                    const cents = Math.floor((ms % 1000) / 10).toString().padStart(2, '0');
+                    const uiTimer = document.getElementById('timerDisplay');
+                    uiTimer.innerText = `${mins}:${secs}.${cents}`;
+
+                    if (state.completed) uiTimer.style.color = '#facc15'; // Yellow on finish
+                    else uiTimer.style.color = '#22d3ee';
+
+                    const total = state.total || 1;
+                    const explored = state.explored || 0;
+                    const pct = Math.floor((explored / total) * 100);
+                    document.getElementById('explorePct').innerText = pct;
+                    document.getElementById('progressFill').style.width = `${pct}%`;
+
 
                     const fCtx = this.fogDetails.getContext('2d');
                     fCtx.globalCompositeOperation = 'destination-out';
@@ -320,18 +378,15 @@
             }
         };
 
-        // Camera Logic
-        let isDrag = false, lx = 0, ly = 0;
         const ctr = document.getElementById('game-container');
+        let isDrag = false, lx = 0, ly = 0;
         ctr.onmousedown = e => { isDrag = true; lx = e.clientX; ly = e.clientY; };
         window.onmouseup = () => isDrag = false;
-        window.onmousemove = e => {
-            if (isDrag) { CAM.x -= (e.clientX - lx) / CAM.zoom; CAM.y -= (e.clientY - ly) / CAM.zoom; lx = e.clientX; ly = e.clientY; }
-        };
+        window.onmousemove = e => { if (isDrag) { CAM.x -= (e.clientX - lx) / CAM.zoom; CAM.y -= (e.clientY - ly) / CAM.zoom; lx = e.clientX; ly = e.clientY; } };
         ctr.onwheel = e => { CAM.zoom += e.deltaY * -0.001; CAM.zoom = Math.min(Math.max(0.1, CAM.zoom), 4); };
 
         document.getElementById('spawnBtn').onclick = () => API.spawn();
-        document.getElementById('resetBtn').onclick = async () => { await API.reset(); client.mapData = await API.getMap(); MockServer.map = client.mapData; client.drawStaticMap(); client.initFog(); };
+        document.getElementById('resetBtn').onclick = async () => { await API.reset(); client.mapData = await API.getMap(); MockServer.map = client.mapData; MockServer.reset(); client.drawStaticMap(); client.initFog(); };
         const modeLabel = document.getElementById('modeLabel');
         document.getElementById('toggleMockBtn').onclick = () => {
             CONFIG.useMock = !CONFIG.useMock;
@@ -340,40 +395,64 @@
             API.reset();
         };
 
-        // MOCK SERVER (Updated with Physics)
+        // MOCK SERVER (Updated with Exploration Logic)
         const MockServer = {
             map: null, agents: [],
+            startTime: 0, endTime: 0, completed: false,
+            start: function () { this.startTime = Date.now(); this.endTime = 0; this.completed = false; },
             getMap: function () { if (!this.map) this.genMap(); return this.map; },
             getState: function () {
-                // Client-side physics (Prediction/Simulation)
+                // Tracking
+                let exploredCount = 0;
+                const now = this.completed ? this.endTime : Date.now();
+                const elapsed = now - this.startTime;
+
                 this.agents.forEach(a => {
                     a.angle += (Math.random() - 0.5) * 0.2;
                     const nextX = a.x + Math.cos(a.angle) * 3;
                     const nextY = a.y + Math.sin(a.angle) * 3;
 
-                    // Collision Check
-                    if (Physics.isValid(nextX, nextY, this.map.rooms)) {
-                        a.x = nextX; a.y = nextY;
-                    } else {
-                        a.angle = Math.random() * Math.PI * 2; // Bounce/Rotate
+                    // Collision & Exploration
+                    let valid = false;
+                    for (let r of this.map.rooms) {
+                        const poly = r.points || r.poly;
+                        if (Physics.isPointInPolygon({ x: nextX, y: nextY }, poly)) {
+                            valid = true;
+                            if (!r.explored) r.explored = true;
+                            break;
+                        }
                     }
+
+                    if (valid) { a.x = nextX; a.y = nextY; }
+                    else { a.angle = Math.random() * Math.PI * 2; }
                 });
-                return { agents: this.agents };
+
+                // Count
+                if (this.map) {
+                    this.map.rooms.forEach(r => { if (r.explored) exploredCount++; });
+                    if (exploredCount >= this.map.rooms.length && !this.completed) {
+                        this.completed = true;
+                        this.endTime = Date.now();
+                    }
+                }
+
+                return {
+                    agents: this.agents,
+                    time: elapsed,
+                    explored: exploredCount,
+                    total: this.map ? this.map.rooms.length : 0,
+                    completed: this.completed
+                };
             },
             spawn: function () {
                 const isRed = Math.random() < 0.2;
-                // Spawn at Map Center (Room 0)
                 const start = this.map.rooms[0];
-                // Simple avg of points for true center approximation if 'center' is missing
                 let cx = 0, cy = 0;
                 if (start.points) { start.points.forEach(p => { cx += p.x; cy += p.y }); cx /= start.points.length; cy /= start.points.length; }
-                else { cx = 1500; cy = 200; }
-
                 this.agents.push({ x: cx, y: cy, angle: 0, isRed });
             },
-            reset: function () { this.agents = []; this.genMap(); },
+            reset: function () { this.agents = []; this.genMap(); this.start(); },
             genMap: function () {
-                // Client-Side High-Fidelity Gen (Use same logic as before but store 'points')
                 this.map = { width: 3000, height: 3000, rooms: [] };
                 const nodes = [];
                 const addRoom = (cx, cy, w, h) => {
@@ -382,32 +461,33 @@
                         let a = i / steps * 6.28; let n = 0.7 + Math.random() * 0.6;
                         pts.push({ x: cx + Math.cos(a) * w / 2 * n, y: cy + Math.sin(a) * h / 2 * n });
                     }
-                    this.map.rooms.push({ points: pts });
+                    this.map.rooms.push({ points: pts, explored: false });
                     nodes.push({ x: cx, y: cy });
                 };
 
                 addRoom(1500, 200, 200, 120);
+                this.map.rooms[0].explored = true; // Start room explored
+
                 for (let i = 0; i < 20; i++) addRoom(200 + Math.random() * 2600, 400 + Math.random() * 2400, 150 + Math.random() * 150, 150 + Math.random() * 150);
 
-                // Simplified Tunnels (Rects for visibility in Mock)
                 nodes.forEach((n, i) => {
                     if (i == 0) return;
                     let range = 1000, best = nodes[0];
                     for (let j = 0; j < i; j++) { let d = Math.hypot(n.x - nodes[j].x, n.y - nodes[j].y); if (d < range) { range = d; best = nodes[j]; } }
                     const p1 = n, p2 = best;
-                    // Simple Box Tunnel
                     const ang = Math.atan2(p2.y - p1.y, p2.x - p1.x);
                     const w = 20;
                     const dx = Math.cos(ang + 1.57) * w; const dy = Math.sin(ang + 1.57) * w;
                     this.map.rooms.push({
                         points: [
                             { x: p1.x + dx, y: p1.y + dy }, { x: p2.x + dx, y: p2.y + dy }, { x: p2.x - dx, y: p2.y - dy }, { x: p1.x - dx, y: p1.y - dy }
-                        ]
+                        ], explored: false
                     });
                 });
             }
         };
 
+        MockServer.start(); // Init timer logic
         modeLabel.innerText = "MODE: MOCK SERVER";
         const client = new GameClient();
     </script>

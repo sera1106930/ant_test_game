@@ -31,8 +31,8 @@ class Room {
     public List<Vec2> points = new ArrayList<>();
     public Vec2 center;
     public String type; // "room" or "tunnel"
+    public boolean explored = false; // New Field
     
-    // Ray-Casting Algorithm
     public boolean contains(double x, double y) {
         boolean inside = false;
         for (int i = 0, j = points.size() - 1; i < points.size(); j = i++) {
@@ -106,6 +106,9 @@ class MapEngine {
             if(id1 != id2 && Vec2.dist(nodes.get(id1), nodes.get(id2)) < 800) 
                 createTunnel(nodes.get(id1), nodes.get(id2), 60);
         }
+        
+        // Mark Surface as explored initially (Start Point)
+        if(!rooms.isEmpty()) rooms.get(0).explored = true;
     }
 
     private void createRoom(double cx, double cy, double w, double h) {
@@ -191,10 +194,17 @@ class SimulationService {
     private final MapEngine map;
     public List<Agent> agents = new ArrayList<>();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    
+    // Timer Logic
+    public long startTime;
+    public long endTime;
+    public boolean completed = false;
+    public int totalRooms = 0;
+    public int exploredRooms = 0;
 
     public SimulationService(MapEngine map) {
         this.map = map;
-        map.generateNest();
+        reset();
     }
 
     @PostConstruct
@@ -204,9 +214,12 @@ class SimulationService {
 
     public void spawn() {
         Agent a = new Agent();
-        Room start = map.rooms.get(0);
-        a.x = start.center.x; 
-        a.y = start.center.y;
+        if(!map.rooms.isEmpty()) {
+            Room start = map.rooms.get(0);
+            a.x = start.center.x; 
+            a.y = start.center.y;
+        } else { a.x = 0; a.y = 0; }
+        
         a.angle = Math.random() * Math.PI * 2;
         if(Math.random() < 0.2) a.isRed = true;
         agents.add(a);
@@ -215,31 +228,64 @@ class SimulationService {
     public void reset() {
         agents.clear();
         map.generateNest();
+        
+        // Count only Type 'room' for exploration target? Or rooms+tunnels?
+        // User said "All rooms explored" (全部room).
+        // Let's count only actual rooms for the target number (ignoring tunnels for difficulty balancing? or all?)
+        // Let's count ALL regions (Room + Tunnel) to ensure full map exploration.
+        // Actually, 'Room' objects include tunnels.
+        totalRooms = map.rooms.size();
+        exploredRooms = 1; // Start room is explored
+        
+        startTime = System.currentTimeMillis();
+        endTime = 0;
+        completed = false;
     }
 
     private void tick() {
+        if(completed) return; // Optional: Stop simulation on complete? Or just stop timer? User said "timer ends". Sim can continue.
+
         // Move Agents
         for(Agent a : agents) {
             if(!a.active) continue;
             
-            // Random Wiggle
             a.angle += (Math.random()-0.5)*0.2;
-            
             double nextX = a.x + Math.cos(a.angle) * 3;
             double nextY = a.y + Math.sin(a.angle) * 3;
             
-            // Checking Collision
-            if(map.isValidPosition(nextX, nextY)) {
-                a.x = nextX; 
-                a.y = nextY;
+            boolean valid = false;
+            // Check Collision & Exploration
+            for(Room r : map.rooms) {
+                if(r.contains(nextX, nextY)) {
+                    valid = true;
+                    if(!r.explored) {
+                        r.explored = true;
+                        exploredRooms++;
+                    }
+                    // Optimization: We could break here, but rooms might overlap given the generation
+                    // If we find one valid, we are good.
+                    break; 
+                }
+            }
+
+            if(valid) {
+                a.x = nextX; a.y = nextY;
             } else {
-                // Wall Hit: Random Rotate
                 a.angle = Math.random() * Math.PI * 2;
-                // Optional: Push back slightly to avoid getting stuck
-                a.x -= Math.cos(a.angle) * 1;
-                a.y -= Math.sin(a.angle) * 1;
+                a.x -= Math.cos(a.angle)*1; a.y -= Math.sin(a.angle)*1;
             }
         }
+        
+        // Check Completion
+        if(exploredRooms >= totalRooms && !completed) {
+            completed = true;
+            endTime = System.currentTimeMillis();
+        }
+    }
+    
+    public long getElapsedTime() {
+        if(completed) return endTime - startTime;
+        return System.currentTimeMillis() - startTime;
     }
 }
 
@@ -272,6 +318,10 @@ public class AntController {
     public Map<String, Object> getState() {
         Map<String, Object> state = new HashMap<>();
         state.put("agents", simService.agents);
+        state.put("time", simService.getElapsedTime());
+        state.put("explored", simService.exploredRooms);
+        state.put("total", simService.totalRooms);
+        state.put("completed", simService.completed);
         return state;
     }
 
