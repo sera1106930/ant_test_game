@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cyberpunk Ant Exploration</title>
+    <title>Cyberpunk Ant Nest</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -13,11 +13,7 @@
             --bg-color: #0f172a;
             --text-color: #f8fafc;
             --accent-cyan: #22d3ee;
-            --accent-blue: #3b82f6;
-            --accent-glow: rgba(34, 211, 238, 0.6);
-            --btn-bg: rgba(15, 23, 42, 0.8);
-            --btn-border: rgba(34, 211, 238, 0.3);
-            --btn-hover: rgba(34, 211, 238, 0.1);
+            --btn-bg: rgba(15, 23, 42, 0.9);
         }
 
         * {
@@ -36,11 +32,15 @@
             user-select: none;
         }
 
-        /* Game Container */
         #game-container {
             position: relative;
             width: 100%;
             height: 100%;
+            cursor: grab;
+        }
+
+        #game-container:active {
+            cursor: grabbing;
         }
 
         canvas {
@@ -51,23 +51,20 @@
             height: 100%;
         }
 
-        /* Layer Z-Indices */
+        /* Order: Map -> Fog -> Ants */
         #bgCanvas {
             z-index: 1;
         }
 
-        /* Circuit Map */
         #fogCanvas {
             z-index: 2;
             opacity: 1;
         }
 
-        /* Fog overlay */
         #antCanvas {
             z-index: 3;
         }
 
-        /* Ants + Particles */
         #uiLayer {
             z-index: 10;
             pointer-events: none;
@@ -76,107 +73,103 @@
             height: 100%;
         }
 
-        /* UI Elements */
         .hud-panel {
             position: absolute;
             top: 2rem;
             left: 2rem;
             padding: 1rem 1.5rem;
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--btn-border);
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(8px);
             border-left: 4px solid var(--accent-cyan);
             border-radius: 4px;
             box-shadow: 0 0 20px rgba(34, 211, 238, 0.1);
             pointer-events: auto;
-            min-width: 200px;
-        }
-
-        .stat-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-row:last-child {
-            margin-bottom: 0;
         }
 
         .stat-label {
             font-size: 0.75rem;
             color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
             font-weight: 600;
         }
 
         .stat-value {
             font-size: 1.25rem;
             font-weight: 700;
-            color: var(--text-color);
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+            color: white;
             font-family: monospace;
         }
 
-        .accent-text {
-            color: var(--accent-cyan);
-        }
-
-        #spawnBtn {
+        .controls {
             position: absolute;
             bottom: 2rem;
             right: 2rem;
-            background: rgba(15, 23, 42, 0.9);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            align-items: flex-end;
+            pointer-events: auto;
+        }
+
+        button {
+            background: var(--btn-bg);
             color: var(--accent-cyan);
             border: 1px solid var(--accent-cyan);
             padding: 0.8rem 1.5rem;
-            border-radius: 2px;
-            /* Techy sharper corners */
+            border-radius: 4px;
             font-weight: 600;
-            font-size: 0.9rem;
             cursor: pointer;
             box-shadow: 0 0 10px rgba(34, 211, 238, 0.2);
-            transition: all 0.2s ease;
-            pointer-events: auto;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+            transition: all 0.2s;
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.5rem;
+            text-transform: uppercase;
         }
 
-        #spawnBtn:hover {
-            background: rgba(34, 211, 238, 0.1);
-            box-shadow: 0 0 20px rgba(34, 211, 238, 0.4);
+        button:hover {
+            background: rgba(34, 211, 238, 0.15);
             transform: translateY(-2px);
         }
 
-        #spawnBtn:active {
+        button:active {
             transform: translateY(0);
         }
 
-        .icon {
-            width: 1.2em;
-            height: 1.2em;
-            fill: currentColor;
-            filter: drop-shadow(0 0 2px currentColor);
+        .btn-danger {
+            color: #ef4444;
+            border-color: #ef4444;
         }
 
-        /* Scanline Effect Overlay (Optional, adds retro feel) */
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        .icon {
+            width: 1.25em;
+            height: 1.25em;
+            fill: currentColor;
+        }
+
         .scanlines {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: repeating-linear-gradient(to bottom,
-                    transparent 0px,
-                    transparent 2px,
-                    rgba(0, 0, 0, 0.1) 3px);
+            background: repeating-linear-gradient(to bottom, transparent 0, transparent 2px, rgba(0, 0, 0, 0.1) 3px);
             pointer-events: none;
             z-index: 9;
             opacity: 0.3;
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 0.8rem;
+            pointer-events: none;
         }
     </style>
 </head>
@@ -184,293 +177,516 @@
 <body>
 
     <div id="game-container">
-        <!-- Layer 1: Background Circuit Map -->
         <canvas id="bgCanvas"></canvas>
-        <!-- Layer 2: Fog (Black Overlay) -->
         <canvas id="fogCanvas"></canvas>
-        <!-- Layer 3: Ants -->
         <canvas id="antCanvas"></canvas>
 
         <div class="scanlines"></div>
 
         <div id="uiLayer">
             <div class="hud-panel">
-                <div class="stat-row">
-                    <span class="stat-label">System Agents</span>
-                    <span class="stat-value" id="antCount">0</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Data Recovered</span>
-                    <span class="stat-value"><span id="explorePercent">0</span>%</span>
-                </div>
+                <div class="stat-label">系統 AGENT 總數</div>
+                <div class="stat-value" id="antCount">0</div>
             </div>
 
-            <button id="spawnBtn">
-                <svg class="icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
-                </svg>
-                Deploy Unit
-            </button>
+            <div class="controls">
+                <button id="resetBtn" class="btn-danger">
+                    <svg class="icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd"
+                            d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                            clip-rule="evenodd" />
+                    </svg>
+                    RESET WORLD
+                </button>
+                <button id="spawnBtn">
+                    <svg class="icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
+                    </svg>
+                    Deploy Agent
+                </button>
+            </div>
+
+            <div class="hint">DRAG TO PAN • SCROLL TO ZOOM</div>
         </div>
     </div>
 
     <script>
         /**
          * ------------------------------------------------------------------
-         * CONFIGURATION & CONSTANTS
+         * CONFIG
          * ------------------------------------------------------------------
          */
         const CONFIG = {
             colors: {
                 bg: '#0f172a',
-                fog: '#000000', // Solid black fog
+                fog: '#000000',
                 ant: '#22d3ee',
-                antGlow: '#22d3ee',
-                circuitLine: 'rgba(56, 189, 248, 0.15)',
-                circuitNode: 'rgba(56, 189, 248, 0.3)'
+                wall: '#06b6d4',
+                ground: '#1e293b'
             },
-            ant: {
-                size: 2,
-                speedMin: 1.5,
-                speedMax: 3.5,
-                turnSpeed: 0.15,
-                sensorDist: 20, // Distance to check for fog
-                shadowBlur: 15
-            },
-            spawnInterval: 5000 // ms
+            world: {
+                width: 3000,
+                height: 3000,
+                roomCount: 20
+            }
         };
 
         /**
          * ------------------------------------------------------------------
-         * CORE CLASSES
+         * MATH UTILS
          * ------------------------------------------------------------------
          */
+        const Vec2 = {
+            add: (v1, v2) => ({ x: v1.x + v2.x, y: v1.y + v2.y }),
+            sub: (v1, v2) => ({ x: v1.x - v2.x, y: v1.y - v2.y }),
+            dot: (v1, v2) => v1.x * v2.x + v1.y * v2.y,
+            mult: (v, s) => ({ x: v.x * s, y: v.y * s }),
+            dist: (v1, v2) => Math.hypot(v1.x - v2.x, v1.y - v2.y),
+            norm: (v) => {
+                const l = Math.hypot(v.x, v.y);
+                return l === 0 ? { x: 0, y: 0 } : { x: v.x / l, y: v.y / l };
+            },
+            normal: (p1, p2) => {
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
+                return Vec2.norm({ x: -dy, y: dx });
+            }
+        };
 
-        class Ant {
-            constructor(w, h) {
-                // Spawn at center initially or random? Let's go with Center for "Base" feel
-                // User said "点击产生：保留原本按鈕", original was random. Let's do random but near center maybe?
-                // Or just full random. Let's keep full random for Exploration.
-                this.x = Math.random() * w;
-                this.y = Math.random() * h;
-                this.angle = Math.random() * Math.PI * 2;
-                this.speed = CONFIG.ant.speedMin + Math.random() * (CONFIG.ant.speedMax - CONFIG.ant.speedMin);
-                this.turnSpeed = CONFIG.ant.turnSpeed;
+        function getIntersection(p1, p2, p3, p4) {
+            const x1 = p1.x, y1 = p1.y, x2 = p2.x, y2 = p2.y;
+            const x3 = p3.x, y3 = p3.y, x4 = p4.x, y4 = p4.y;
+            const denom = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
+            if (denom == 0) return null;
+            const ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denom;
+            const ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denom;
+            if (ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1) {
+                return { x: x1 + ua * (x2 - x1), y: y1 + ua * (y2 - y1) };
+            }
+            return null;
+        }
+
+        // Point inside polygon check (Ray Casting)
+        function isPointInPoly(pt, poly) {
+            let inside = false;
+            for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+                const xi = poly[i].x, yi = poly[i].y;
+                const xj = poly[j].x, yj = poly[j].y;
+                const intersect = ((yi > pt.y) != (yj > pt.y)) && (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+
+        /**
+         * ------------------------------------------------------------------
+         * MAP DATA (MST Generation + Smart Collision)
+         * ------------------------------------------------------------------
+         */
+        class MapData {
+            constructor(width, height) {
+                this.width = width;
+                this.height = height;
+                this.rooms = []; // All Shapes (Rooms + Tunnels)
+                this.generateMSTMap();
             }
 
-            update(w, h, fogCtx) {
-                // 1. Simple AI: Wander with randomness
-                this.angle += (Math.random() - 0.5) * this.turnSpeed;
+            generateMSTMap() {
+                this.rooms = [];
+                const nodes = [];
 
-                // 2. Move
-                this.x += Math.cos(this.angle) * this.speed;
-                this.y += Math.sin(this.angle) * this.speed;
+                // 1. Scatter Rooms
+                // Always create a Surface Start Room
+                const surfaceRoom = this.createRoom(this.width / 2, 200, 200, 120);
+                nodes.push({ x: this.width / 2, y: 200, id: 0 });
+                this.rooms.push(surfaceRoom);
 
-                // 3. Bounce Walls
-                if (this.x < 0) { this.x = 0; this.angle = Math.PI - this.angle; }
-                else if (this.x > w) { this.x = w; this.angle = Math.PI - this.angle; }
-                if (this.y < 0) { this.y = 0; this.angle = -this.angle; }
-                else if (this.y > h) { this.y = h; this.angle = -this.angle; }
+                // Create Random Rooms
+                for (let i = 1; i < CONFIG.world.roomCount; i++) {
+                    const cx = 200 + Math.random() * (this.width - 400);
+                    const cy = 400 + Math.random() * (this.height - 600);
 
-                // 4. Reveal Fog (The "Mining" logic)
-                // We draw a circle on the destination-out fog canvas at our position
-                fogCtx.globalCompositeOperation = 'destination-out';
-                fogCtx.fillStyle = 'rgba(0,0,0,1)';
-                fogCtx.beginPath();
-                // A bit larger than the ant to clear a path
-                fogCtx.arc(this.x, this.y, 25, 0, Math.PI * 2);
-                fogCtx.fill();
-                // Reset composition DO NOT FORGET
-                fogCtx.globalCompositeOperation = 'source-over';
+                    const w = 150 + Math.random() * 200;
+                    const h = 150 + Math.random() * 200;
+
+                    const room = this.createRoom(cx, cy, w, h);
+                    this.rooms.push(room);
+                    nodes.push({ x: cx, y: cy, id: i });
+                }
+
+                // 2. Minimum Spanning Tree (Prim's Algorithm)
+                const edges = [];
+                const reached = new Set([0]); // Start with node 0
+                const unreached = new Set(nodes.slice(1).map(n => n.id));
+
+                while (unreached.size > 0) {
+                    let minDist = Infinity;
+                    let bestEdge = null;
+                    let bestNodeIndex = -1;
+
+                    for (const rId of reached) {
+                        const rNode = nodes[rId];
+                        for (const uId of unreached) {
+                            const uNode = nodes[uId];
+                            const d = Vec2.dist(rNode, uNode);
+                            if (d < minDist) {
+                                minDist = d;
+                                bestEdge = { p1: rNode, p2: uNode };
+                                bestNodeIndex = uId;
+                            }
+                        }
+                    }
+
+                    if (bestEdge) {
+                        edges.push(bestEdge);
+                        reached.add(bestNodeIndex);
+                        unreached.delete(bestNodeIndex);
+                    } else {
+                        break; // Should not happen
+                    }
+                }
+
+                // 3. Add Extra Random Lines (Cycles)
+                // Connect some close nodes that aren't directly connected
+                const extraEdges = Math.floor(nodes.length * 0.3);
+                for (let k = 0; k < extraEdges; k++) {
+                    const id1 = Math.floor(Math.random() * nodes.length);
+                    const id2 = Math.floor(Math.random() * nodes.length);
+                    if (id1 !== id2) {
+                        edges.push({ p1: nodes[id1], p2: nodes[id2] });
+                    }
+                }
+
+                // 4. Create Tunnels for Edges
+                edges.forEach(edge => {
+                    this.rooms.push(this.createTunnel(edge.p1, edge.p2, 60));
+                });
+            }
+
+            createRoom(cx, cy, w, h) {
+                const points = [];
+                const steps = 12; // Hexagon+ ish
+                for (let i = 0; i < steps; i++) {
+                    const ang = (i / steps) * Math.PI * 2;
+                    // Irregularity
+                    const radX = (w / 2) * (0.8 + Math.random() * 0.4);
+                    const radY = (h / 2) * (0.8 + Math.random() * 0.4);
+                    points.push({
+                        x: cx + Math.cos(ang) * radX,
+                        y: cy + Math.sin(ang) * radY
+                    });
+                }
+                return { points, type: 'room', center: { x: cx, y: cy } };
+            }
+
+            createTunnel(p1, p2, width) {
+                const norm = Vec2.normal(p1, p2);
+                const offset = Vec2.mult(norm, width / 2);
+                return {
+                    points: [
+                        Vec2.add(p1, offset),
+                        Vec2.add(p2, offset),
+                        Vec2.sub(p2, offset),
+                        Vec2.sub(p1, offset)
+                    ],
+                    type: 'tunnel'
+                };
+            }
+
+            // Is Point inside ANY room (Union)?
+            isValidPosition(x, y) {
+                const pt = { x, y };
+                for (const room of this.rooms) {
+                    if (isPointInPoly(pt, room.points)) return true;
+                }
+                return false;
+            }
+
+            // Smart Collision: Ignores internal walls
+            checkCollision(p1, p2) {
+                if (this.isValidPosition(p2.x, p2.y)) return null;
+
+                let bestHit = null;
+                let minDst = Infinity;
+
+                // Check ALL walls
+                for (const room of this.rooms) {
+                    const pts = room.points;
+                    for (let i = 0; i < pts.length; i++) {
+                        const w1 = pts[i];
+                        const w2 = pts[(i + 1) % pts.length];
+
+                        const hit = getIntersection(p1, p2, w1, w2);
+                        if (hit) {
+                            // CRITICAL: Check if this wall is actually inside ANOTHER room
+                            // Shift hit point slightly into the "other side" to see if it's void or solid?
+                            // Better: Check if the Hit Point itself is inside any OTHER polygon (with a small epsilon)
+
+                            // Let's verify if the wall midpoint is inside another poly.
+                            const mid = { x: (w1.x + w2.x) / 2, y: (w1.y + w2.y) / 2 };
+                            let isInternal = false;
+
+                            for (const otherRoom of this.rooms) {
+                                if (otherRoom === room) continue;
+                                if (isPointInPoly(hit, otherRoom.points)) {
+                                    isInternal = true;
+                                    break;
+                                }
+                            }
+
+                            if (!isInternal) {
+                                const dst = Vec2.dist(p1, hit);
+                                if (dst < minDst) {
+                                    minDst = dst;
+                                    bestHit = { pos: hit, normal: Vec2.normal(w1, w2) };
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!bestHit) {
+                    // Fallback bounce
+                    return { pos: p1, normal: Vec2.norm(Vec2.sub(p1, p2)) };
+                }
+                return bestHit;
+            }
+        }
+
+        /**
+         * ------------------------------------------------------------------
+         * ANT & GAME
+         * ------------------------------------------------------------------
+         */
+        class Ant {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.angle = Math.random() * Math.PI * 2;
+                this.speed = 2 + Math.random() * 2;
+            }
+
+            update(mapData) {
+                this.angle += (Math.random() - 0.5) * 0.2;
+                const vx = Math.cos(this.angle) * this.speed;
+                const vy = Math.sin(this.angle) * this.speed;
+
+                const nextX = this.x + vx;
+                const nextY = this.y + vy;
+
+                const collision = mapData.checkCollision({ x: this.x, y: this.y }, { x: nextX, y: nextY });
+
+                if (collision) {
+                    const n = collision.normal;
+                    const v = { x: vx, y: vy };
+                    const dot = Vec2.dot(v, n);
+                    const r = Vec2.sub(v, Vec2.mult(n, 2 * dot));
+
+                    this.angle = Math.atan2(r.y, r.x);
+                    this.x = collision.pos.x + n.x * 2;
+                    this.y = collision.pos.y + n.y * 2;
+                } else {
+                    this.x = nextX;
+                    this.y = nextY;
+                }
             }
 
             draw(ctx) {
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, CONFIG.ant.size, 0, Math.PI * 2);
+                ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
                 ctx.fillStyle = CONFIG.colors.ant;
-                ctx.shadowBlur = CONFIG.ant.shadowBlur;
-                ctx.shadowColor = CONFIG.colors.antGlow;
+                ctx.shadowColor = CONFIG.colors.ant;
+                ctx.shadowBlur = 10;
                 ctx.fill();
-                ctx.shadowBlur = 0; // Reset
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class Camera {
+            constructor() {
+                this.x = CONFIG.world.width / 2 - window.innerWidth / 2;
+                this.y = 0;
+                this.zoom = 0.6; // Improved start zoom
+                this.isDragging = false;
+                this.lastMouse = { x: 0, y: 0 };
+
+                const el = document.getElementById('game-container');
+                el.addEventListener('mousedown', e => {
+                    this.isDragging = true;
+                    this.lastMouse = { x: e.clientX, y: e.clientY };
+                    el.style.cursor = 'grabbing';
+                });
+                window.addEventListener('mouseup', () => {
+                    this.isDragging = false;
+                    el.style.cursor = 'grab';
+                });
+                window.addEventListener('mousemove', e => {
+                    if (!this.isDragging) return;
+                    const dx = e.clientX - this.lastMouse.x;
+                    const dy = e.clientY - this.lastMouse.y;
+                    this.x -= dx / this.zoom;
+                    this.y -= dy / this.zoom;
+                    this.lastMouse = { x: e.clientX, y: e.clientY };
+                });
+                el.addEventListener('wheel', e => {
+                    e.preventDefault();
+                    const zoomSpeed = 0.001;
+                    this.zoom += e.deltaY * -zoomSpeed;
+                    this.zoom = Math.min(Math.max(0.1, this.zoom), 3);
+                });
+            }
+
+            apply(ctx) {
+                ctx.save();
+                ctx.translate(window.innerWidth / 2, window.innerHeight / 2);
+                ctx.scale(this.zoom, this.zoom);
+                ctx.translate(-this.x - window.innerWidth / 2, -this.y - window.innerHeight / 2);
             }
         }
 
         class Game {
             constructor() {
-                // Canvases
-                this.bgCanvas = document.getElementById('bgCanvas');
-                this.bgCtx = this.bgCanvas.getContext('2d');
+                this.canvases = {
+                    bg: document.getElementById('bgCanvas').getContext('2d'),
+                    fog: document.getElementById('fogCanvas').getContext('2d'),
+                    ant: document.getElementById('antCanvas').getContext('2d')
+                };
 
-                this.fogCanvas = document.getElementById('fogCanvas');
-                this.fogCtx = this.fogCanvas.getContext('2d');
-
-                this.antCanvas = document.getElementById('antCanvas');
-                this.antCtx = this.antCanvas.getContext('2d');
-
-                // State
-                this.ants = [];
-                this.width = window.innerWidth;
-                this.height = window.innerHeight;
-                this.autoSpawnTimer = null;
-                this.lastExplorationCheck = 0;
-
-                // Bindings
-                this.resize = this.resize.bind(this);
-                this.loop = this.loop.bind(this);
-                this.spawnAnt = this.spawnAnt.bind(this);
-
-                // UI
-                this.uiAntCount = document.getElementById('antCount');
-                this.uiExplorePercent = document.getElementById('explorePercent');
-
-                // Init
-                window.addEventListener('resize', this.resize);
-                document.getElementById('spawnBtn').addEventListener('click', () => this.spawnAnt());
+                this.maskCanvas = document.createElement('canvas');
+                this.staticBg = document.createElement('canvas');
 
                 this.resize();
-                // Fill Fog Initially
-                this.resetFog();
-                // Generate Map
-                this.generateMap();
 
-                // Start Loop
+                this.map = new MapData(CONFIG.world.width, CONFIG.world.height);
+                this.camera = new Camera();
+                this.ants = [];
+
+                this.drawStaticMap();
+                this.fillFog();
+
+                window.addEventListener('resize', () => {
+                    this.resize();
+                    this.drawStaticMap();
+                    this.fillFog();
+                });
+
+                document.getElementById('spawnBtn').addEventListener('click', () => this.deploy());
+                document.getElementById('resetBtn').addEventListener('click', () => this.reset());
+
+                this.loop = this.loop.bind(this);
                 requestAnimationFrame(this.loop);
-
-                // Auto Spawn
-                setInterval(this.spawnAnt, CONFIG.spawnInterval);
             }
 
             resize() {
-                this.width = window.innerWidth;
-                this.height = window.innerHeight;
-
-                [this.bgCanvas, this.fogCanvas, this.antCanvas].forEach(c => {
-                    // Save old fog data if we want to preserve exploration on resize
-                    // For now, simpler to just resize. Fog might clear or stretch.
-                    // Let's just reset props.
-                    c.width = this.width;
-                    c.height = this.height;
-                });
-
-                // Re-gen static stuff on resize
-                this.generateMap();
-                this.resetFog(); // Warning: This resets progress. In a real game, we'd scale the bitmap.
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+                for (let k in this.canvases) {
+                    this.canvases[k].canvas.width = w;
+                    this.canvases[k].canvas.height = h;
+                }
+                this.maskCanvas.width = CONFIG.world.width;
+                this.maskCanvas.height = CONFIG.world.height;
+                this.staticBg.width = CONFIG.world.width;
+                this.staticBg.height = CONFIG.world.height;
             }
 
-            resetFog() {
-                this.fogCtx.globalCompositeOperation = 'source-over';
-                this.fogCtx.fillStyle = CONFIG.colors.fog;
-                this.fogCtx.fillRect(0, 0, this.width, this.height);
+            reset() {
+                this.ants = [];
+                this.map = new MapData(CONFIG.world.width, CONFIG.world.height);
+                this.drawStaticMap();
+                this.fillFog();
+                document.getElementById('antCount').innerText = 0;
             }
 
-            generateMap() {
-                const ctx = this.bgCtx;
-                ctx.clearRect(0, 0, this.width, this.height);
+            deploy() {
+                // Deploy in Surface Room (always index 0)
+                const room = this.map.rooms[0];
+                this.ants.push(new Ant(room.center.x, room.center.y));
+                document.getElementById('antCount').innerText = this.ants.length;
+            }
 
-                // Draw "Digital Circuit Lines"
-                const nodeCount = 40;
-                const nodes = [];
+            drawStaticMap() {
+                const mCtx = this.maskCanvas.getContext('2d');
+                mCtx.clearRect(0, 0, this.maskCanvas.width, this.maskCanvas.height);
 
-                // Create random nodes
-                for (let i = 0; i < nodeCount; i++) {
-                    nodes.push({
-                        x: Math.random() * this.width,
-                        y: Math.random() * this.height
+                mCtx.fillStyle = '#ffffff';
+                this.map.rooms.forEach(room => {
+                    mCtx.beginPath();
+                    room.points.forEach((p, i) => {
+                        if (i === 0) mCtx.moveTo(p.x, p.y);
+                        else mCtx.lineTo(p.x, p.y);
                     });
-                }
+                    mCtx.closePath();
+                    mCtx.fill();
+                });
 
-                ctx.strokeStyle = CONFIG.colors.circuitLine;
-                ctx.lineWidth = 1;
-                ctx.lineCap = 'round';
+                const bCtx = this.staticBg.getContext('2d');
+                bCtx.clearRect(0, 0, CONFIG.world.width, CONFIG.world.height);
 
-                // Connect nodes if close
-                ctx.beginPath();
-                for (let i = 0; i < nodes.length; i++) {
-                    for (let j = i + 1; j < nodes.length; j++) {
-                        const dist = Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y);
-                        if (dist < 200) {
-                            ctx.moveTo(nodes[i].x, nodes[i].y);
-                            ctx.lineTo(nodes[j].x, nodes[j].y);
-                        }
-                    }
-                }
-                ctx.stroke();
+                bCtx.save();
+                bCtx.shadowBlur = 20;
+                bCtx.shadowColor = CONFIG.colors.wall;
+                bCtx.drawImage(this.maskCanvas, 0, 0);
+                bCtx.restore();
 
-                // Draw Nodes
-                ctx.fillStyle = CONFIG.colors.circuitNode;
-                nodes.forEach(node => {
-                    ctx.beginPath();
-                    ctx.arc(node.x, node.y, 3, 0, Math.PI * 2);
-                    ctx.fill();
+                bCtx.globalCompositeOperation = 'source-over';
+                bCtx.fillStyle = CONFIG.colors.ground;
+                this.map.rooms.forEach(room => {
+                    bCtx.beginPath();
+                    room.points.forEach((p, i) => {
+                        if (i === 0) bCtx.moveTo(p.x, p.y);
+                        else bCtx.lineTo(p.x, p.y);
+                    });
+                    bCtx.closePath();
+                    bCtx.fill();
                 });
             }
 
-            spawnAnt() {
-                this.ants.push(new Ant(this.width, this.height));
-                this.updateUI();
+            fillFog() {
+                this.worldFog = document.createElement('canvas');
+                this.worldFog.width = CONFIG.world.width;
+                this.worldFog.height = CONFIG.world.height;
+                this.fogCtx = this.worldFog.getContext('2d');
+                this.fogCtx.fillStyle = 'black';
+                this.fogCtx.fillRect(0, 0, CONFIG.world.width, CONFIG.world.height);
             }
 
-            updateUI() {
-                this.uiAntCount.textContent = this.ants.length;
-            }
+            loop() {
+                const { bg, ant, fog } = this.canvases;
+                const w = window.innerWidth, h = window.innerHeight;
 
-            checkExploration() {
-                // Expensive operation! Do sparingly.
-                // Sample pixel data from fog canvas.
-                // 100x100 sample grid is enough for estimation.
-                const sampleRes = 50;
-                const stepX = Math.floor(this.width / sampleRes);
-                const stepY = Math.floor(this.height / sampleRes);
-
-                if (stepX === 0 || stepY === 0) return;
-
-                // Optimized: read pixels only at specific points? 
-                // getImageData is slow for full canvas.
-                // Let's grab small thumbnail? 
-                // Actually, for "modern" devices, getting image data of 1000x1000 is okay-ish once a second.
-                // But let's try the scaling trick: Draw fog to a 100x1 scale canvas, then count pixels?
-                // No, creating new canvas is overhead.
-
-                // Let's just do it every 60 frames (1 sec)
-                const id = this.fogCtx.getImageData(0, 0, this.width, this.height).data;
-                let clearPixels = 0;
-                // Check alpha every 100th pixel (stride 4 * 100)
-                const stride = 4 * 100;
-                let totalSamples = 0;
-
-                for (let i = 3; i < id.length; i += stride) {
-                    // i is alpha channel
-                    if (id[i] < 10) { // If alpha is low (erased)
-                        clearPixels++;
-                    }
-                    totalSamples++;
-                }
-
-                const percent = ((clearPixels / totalSamples) * 100).toFixed(1);
-                this.uiExplorePercent.textContent = percent;
-            }
-
-            loop(timestamp) {
-                // Clear Ant Layer ONLY
-                this.antCtx.clearRect(0, 0, this.width, this.height);
-
-                // Update Ants
-                this.ants.forEach(ant => {
-                    ant.update(this.width, this.height, this.fogCtx);
-                    ant.draw(this.antCtx);
+                this.ants.forEach(a => {
+                    a.update(this.map);
+                    this.fogCtx.globalCompositeOperation = 'destination-out';
+                    this.fogCtx.beginPath();
+                    this.fogCtx.arc(a.x, a.y, 80, 0, Math.PI * 2); // Big Reveal
+                    this.fogCtx.fillStyle = 'black';
+                    this.fogCtx.fill();
+                    this.fogCtx.globalCompositeOperation = 'source-over';
                 });
 
-                // Periodic Exploration Check (every ~1s)
-                if (timestamp - this.lastExplorationCheck > 1000) {
-                    this.checkExploration();
-                    this.lastExplorationCheck = timestamp;
-                }
+                bg.clearRect(0, 0, w, h);
+                ant.clearRect(0, 0, w, h);
+                fog.clearRect(0, 0, w, h);
+
+                this.camera.apply(bg);
+                bg.drawImage(this.staticBg, 0, 0);
+                bg.restore();
+
+                this.camera.apply(ant);
+                this.ants.forEach(a => a.draw(ant));
+                ant.restore();
+
+                fog.save();
+                this.camera.apply(fog);
+                fog.drawImage(this.worldFog, 0, 0);
+                fog.restore();
 
                 requestAnimationFrame(this.loop);
             }
         }
 
-        // Boot
         const game = new Game();
 
     </script>
