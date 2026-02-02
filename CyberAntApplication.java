@@ -35,7 +35,25 @@ class Room {
     public String type; // "room" or "tunnel"
     public boolean explored = false; // New Field
     
+    // AABB for performance optimization
+    public double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE;
+    public double maxX = -Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
+
+    public void updateAABB() {
+        minX = Double.MAX_VALUE; minY = Double.MAX_VALUE;
+        maxX = -Double.MAX_VALUE; maxY = -Double.MAX_VALUE;
+        for(Vec2 p : points) {
+            if(p.x < minX) minX = p.x;
+            if(p.x > maxX) maxX = p.x;
+            if(p.y < minY) minY = p.y;
+            if(p.y > maxY) maxY = p.y;
+        }
+    }
+    
     public boolean contains(double x, double y) {
+        // Fast AABB Check
+        if (x < minX || x > maxX || y < minY || y > maxY) return false;
+
         boolean inside = false;
         for (int i = 0, j = points.size() - 1; i < points.size(); j = i++) {
             double xi = points.get(i).x, yi = points.get(i).y;
@@ -54,8 +72,8 @@ class Room {
 // --------------------------------------------------------
 @Service
 class MapEngine {
-    public int width = 3000;
-    public int height = 3000;
+    public int width = 6000;
+    public int height = 6000;
     public List<Room> rooms = new ArrayList<>();
 
     public void generateNest() {
@@ -67,7 +85,7 @@ class MapEngine {
         nodes.add(new Vec2(width/2.0, 200));
 
         // 2. Random Rooms
-        for(int i=0; i<20; i++) {
+        for(int i=0; i<50; i++) {
             double cx = 200 + Math.random() * (width - 400);
             double cy = 400 + Math.random() * (height - 600);
             createRoom(cx, cy, 150 + Math.random()*150, 150 + Math.random()*150);
@@ -125,6 +143,7 @@ class MapEngine {
             double ry = (h/2) * noise;
             r.points.add(new Vec2(cx + Math.cos(ang)*rx, cy + Math.sin(ang)*ry));
         }
+        r.updateAABB();
         rooms.add(r);
     }
 
@@ -136,8 +155,8 @@ class MapEngine {
         path.add(p1);
         
         Vec2 dir = Vec2.sub(p2, p1);
-        for(int i=1; i<=2; i++) {
-            double tVal = i / 3.0;
+        for(int i=1; i<=5; i++) {
+            double tVal = i / 6.0;
             Vec2 p = Vec2.add(p1, Vec2.mult(dir, tVal));
             Vec2 perp = new Vec2(-dir.y, dir.x);
             double len = Math.hypot(perp.x, perp.y);
@@ -170,6 +189,7 @@ class MapEngine {
 
         t.points.addAll(leftSide);
         for(int i=rightSide.size()-1; i>=0; i--) t.points.add(rightSide.get(i));
+        t.updateAABB();
         
         rooms.add(t);
     }

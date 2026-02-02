@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0f172a;
+            --bg-color: #000000;
             --accent-cyan: #22d3ee;
             --accent-red: #ef4444;
         }
@@ -153,7 +153,7 @@
         const CONFIG = {
             useMock: true,
             apiBase: 'http://localhost:8080/api',
-            colors: { bg: '#0f172a', ground: '#1e293b', ant: '#22d3ee', antRed: '#ef4444', border: '#22d3ee' }
+            colors: { bg: '#000000', ground: '#1e293b', ant: '#22d3ee', antRed: '#ef4444', border: '#22d3ee' }
         };
 
         const API = {
@@ -233,53 +233,54 @@
                 if (!this.mapData) return;
 
                 const mCanvas = document.createElement('canvas');
-                mCanvas.width = Math.max(3000, this.mapData.width);
-                mCanvas.height = Math.max(3000, this.mapData.height);
+                mCanvas.width = Math.max(6000, this.mapData.width);
+                mCanvas.height = Math.max(6000, this.mapData.height);
                 const mCtx = mCanvas.getContext('2d');
 
-                mCtx.fillStyle = 'white';
-                this.mapData.rooms.forEach(r => {
-                    mCtx.beginPath();
-                    const ptrs = r.points || r.poly;
-                    ptrs.forEach((p, i) => i === 0 ? mCtx.moveTo(p.x, p.y) : mCtx.lineTo(p.x, p.y));
-                    mCtx.closePath();
-                    mCtx.fill();
-                });
+                // We don't need the white fill mCtx logic anymore if we draw directly to bCtx or reusing mCtx
+                // But let's follow the previous pattern of creating a background image.
 
                 const bCtx = document.createElement('canvas').getContext('2d');
                 bCtx.canvas.width = mCanvas.width; bCtx.canvas.height = mCanvas.height;
 
-                // Grid
+                // Grid (Optional, keep faint)
                 bCtx.strokeStyle = 'rgba(34, 211, 238, 0.05)';
                 bCtx.lineWidth = 1;
                 for (let x = 0; x < mCanvas.width; x += 100) { bCtx.beginPath(); bCtx.moveTo(x, 0); bCtx.lineTo(x, mCanvas.height); bCtx.stroke(); }
                 for (let y = 0; y < mCanvas.height; y += 100) { bCtx.beginPath(); bCtx.moveTo(0, y); bCtx.lineTo(mCanvas.width, y); bCtx.stroke(); }
 
-                // Ground
-                bCtx.globalCompositeOperation = 'source-over';
-                bCtx.fillStyle = CONFIG.colors.ground;
+                // ------------------------------------------------
+                // ------------------------------------------------
+                // UNIFIED PATH FILL RENDERING
+                // ------------------------------------------------
+
+                // 1. Define ONE massive path for all rooms/tunnels
+                bCtx.beginPath();
                 this.mapData.rooms.forEach(r => {
-                    bCtx.beginPath();
                     const ptrs = r.points || r.poly;
                     ptrs.forEach((p, i) => i === 0 ? bCtx.moveTo(p.x, p.y) : bCtx.lineTo(p.x, p.y));
-                    bCtx.fill();
+                    bCtx.closePath(); // Close each room polygon
                 });
 
-                // Dashed Border
+                // 2. Single Fill (Treats entire set as one polygon)
+                // This creates the opaque body of the map, solving any overlap opacity issues.
+                bCtx.globalCompositeOperation = 'source-over';
+                bCtx.fillStyle = 'rgba(30, 41, 59, 1)';
+                bCtx.fill();
+
+                // 3. STROKE the edges (Glow) BEHIND the fill
+                // Using 'destination-over' ensures we only see the outer glow, and no internal overlap lines.
+                bCtx.globalCompositeOperation = 'destination-over';
                 bCtx.strokeStyle = CONFIG.colors.border;
-                bCtx.lineWidth = 2;
-                bCtx.setLineDash([5, 15]);
+                bCtx.lineWidth = 4; // Thicker for better glow visibility
                 bCtx.shadowColor = CONFIG.colors.border;
                 bCtx.shadowBlur = 25;
-                this.mapData.rooms.forEach(r => {
-                    bCtx.beginPath();
-                    const ptrs = r.points || r.poly;
-                    ptrs.forEach((p, i) => i === 0 ? bCtx.moveTo(p.x, p.y) : bCtx.lineTo(p.x, p.y));
-                    bCtx.closePath();
-                    bCtx.stroke();
-                });
+                bCtx.setLineDash([]); // Ensure solid line
+                bCtx.stroke();
+
+                // Reset
+                bCtx.globalCompositeOperation = 'source-over';
                 bCtx.shadowBlur = 0;
-                bCtx.setLineDash([]);
 
                 this.bgImage = bCtx.canvas;
             }
@@ -287,8 +288,8 @@
             initFog() {
                 if (!this.mapData) return;
                 this.fogDetails = document.createElement('canvas');
-                this.fogDetails.width = Math.max(3000, this.mapData.width);
-                this.fogDetails.height = Math.max(3000, this.mapData.height);
+                this.fogDetails.width = Math.max(6000, this.mapData.width);
+                this.fogDetails.height = Math.max(6000, this.mapData.height);
                 const ctx = this.fogDetails.getContext('2d');
                 ctx.fillStyle = 'black';
                 ctx.fillRect(0, 0, this.fogDetails.width, this.fogDetails.height);
@@ -369,7 +370,7 @@
         }
 
         const CAM = {
-            x: 0, y: 0, zoom: 0.6,
+            x: 0, y: 0, zoom: 0.3,
             apply(ctx) {
                 ctx.save();
                 ctx.translate(window.innerWidth / 2, window.innerHeight / 2);
@@ -453,7 +454,7 @@
             },
             reset: function () { this.agents = []; this.genMap(); this.start(); },
             genMap: function () {
-                this.map = { width: 3000, height: 3000, rooms: [] };
+                this.map = { width: 6000, height: 6000, rooms: [] };
                 const nodes = [];
                 const addRoom = (cx, cy, w, h) => {
                     const pts = []; const steps = 20;
@@ -465,10 +466,10 @@
                     nodes.push({ x: cx, y: cy });
                 };
 
-                addRoom(1500, 200, 200, 120);
+                addRoom(3000, 200, 200, 120);
                 this.map.rooms[0].explored = true; // Start room explored
 
-                for (let i = 0; i < 20; i++) addRoom(200 + Math.random() * 2600, 400 + Math.random() * 2400, 150 + Math.random() * 150, 150 + Math.random() * 150);
+                for (let i = 0; i < 50; i++) addRoom(200 + Math.random() * 5600, 400 + Math.random() * 5400, 150 + Math.random() * 150, 150 + Math.random() * 150);
 
                 nodes.forEach((n, i) => {
                     if (i == 0) return;
