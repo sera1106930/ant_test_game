@@ -26,7 +26,9 @@ class Vec2 {
         return l == 0 ? new Vec2(0,0) : new Vec2(-dy/l, dx/l);
     }
 }
-
+//測試結果: 1. 房間和通道的生成邏輯看起來是正確的，使用了最小生成樹(MST)來連接房間，並添加了隨機迴路來增加複雜性。
+// 2. 房間的包含邏輯(ray casting)也是標準的實現。
+// 3. 探索狀態(explored)的標記邏輯也正確地在生成時將起始房間標記為已探索。
 class Room {
     public List<Vec2> points = new ArrayList<>();
     public Vec2 center;
