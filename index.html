@@ -4,99 +4,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cyberpunk Ant Nest</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <title>Cyberpunk Ant Net</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #0f172a;
-            --text-color: #f8fafc;
             --accent-cyan: #22d3ee;
-            --btn-bg: rgba(15, 23, 42, 0.9);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+            --accent-red: #ef4444;
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            margin: 0;
+            background: var(--bg-color);
             overflow: hidden;
-            width: 100vw;
-            height: 100vh;
-            user-select: none;
-        }
-
-        #game-container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            cursor: grab;
-        }
-
-        #game-container:active {
-            cursor: grabbing;
+            font-family: 'Inter', sans-serif;
         }
 
         canvas {
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-        }
-
-        /* Order: Map -> Fog -> Ants */
-        #bgCanvas {
-            z-index: 1;
-        }
-
-        #fogCanvas {
-            z-index: 2;
-            opacity: 1;
-        }
-
-        #antCanvas {
-            z-index: 3;
         }
 
         #uiLayer {
-            z-index: 10;
-            pointer-events: none;
             position: absolute;
+            z-index: 10;
             width: 100%;
             height: 100%;
+            pointer-events: none;
         }
 
-        .hud-panel {
+        .hud {
             position: absolute;
             top: 2rem;
             left: 2rem;
-            padding: 1rem 1.5rem;
-            background: rgba(15, 23, 42, 0.7);
-            backdrop-filter: blur(8px);
-            border-left: 4px solid var(--accent-cyan);
-            border-radius: 4px;
-            box-shadow: 0 0 20px rgba(34, 211, 238, 0.1);
-            pointer-events: auto;
-        }
-
-        .stat-label {
-            font-size: 0.75rem;
-            color: #94a3b8;
-            font-weight: 600;
-        }
-
-        .stat-value {
-            font-size: 1.25rem;
-            font-weight: 700;
             color: white;
-            font-family: monospace;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 1rem;
+            border-left: 4px solid var(--accent-cyan);
+            pointer-events: auto;
         }
 
         .controls {
@@ -106,589 +52,364 @@
             display: flex;
             flex-direction: column;
             gap: 1rem;
-            align-items: flex-end;
             pointer-events: auto;
         }
 
         button {
-            background: var(--btn-bg);
-            color: var(--accent-cyan);
-            border: 1px solid var(--accent-cyan);
-            padding: 0.8rem 1.5rem;
-            border-radius: 4px;
-            font-weight: 600;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: cyan;
+            border: 1px solid cyan;
             cursor: pointer;
-            box-shadow: 0 0 10px rgba(34, 211, 238, 0.2);
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
             text-transform: uppercase;
+            font-weight: bold;
+            transition: all 0.2s;
         }
 
         button:hover {
-            background: rgba(34, 211, 238, 0.15);
-            transform: translateY(-2px);
+            background: rgba(0, 255, 255, 0.2);
+            box-shadow: 0 0 15px var(--accent-cyan);
         }
 
-        button:active {
-            transform: translateY(0);
-        }
-
-        .btn-danger {
-            color: #ef4444;
-            border-color: #ef4444;
-        }
-
-        .btn-danger:hover {
-            background: rgba(239, 68, 68, 0.15);
-        }
-
-        .icon {
-            width: 1.25em;
-            height: 1.25em;
-            fill: currentColor;
-        }
-
-        .scanlines {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: repeating-linear-gradient(to bottom, transparent 0, transparent 2px, rgba(0, 0, 0, 0.1) 3px);
-            pointer-events: none;
-            z-index: 9;
-            opacity: 0.3;
-        }
-
-        .hint {
+        .mock-indicator {
             position: absolute;
-            bottom: 2rem;
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255, 255, 255, 0.3);
+            top: 10px;
+            right: 10px;
+            color: yellow;
             font-size: 0.8rem;
-            pointer-events: none;
+            opacity: 0.7;
         }
     </style>
 </head>
 
 <body>
-
     <div id="game-container">
         <canvas id="bgCanvas"></canvas>
         <canvas id="fogCanvas"></canvas>
         <canvas id="antCanvas"></canvas>
-
-        <div class="scanlines"></div>
-
         <div id="uiLayer">
-            <div class="hud-panel">
-                <div class="stat-label">系統 AGENT 總數</div>
-                <div class="stat-value" id="antCount">0</div>
+            <div class="mock-indicator" id="modeLabel">Connecting...</div>
+            <div class="hud">
+                <div>SYSTEM STATUS: <span style="color:#22d3ee">ONLINE</span></div>
+                <div>AGENTS: <span id="antCount">0</span></div>
             </div>
-
             <div class="controls">
-                <button id="resetBtn" class="btn-danger">
-                    <svg class="icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd"
-                            d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
-                            clip-rule="evenodd" />
-                    </svg>
-                    RESET WORLD
-                </button>
-                <button id="spawnBtn">
-                    <svg class="icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                        <path
-                            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
-                    </svg>
-                    Deploy Agent
-                </button>
+                <button id="resetBtn">REGENERATE NET</button>
+                <button id="spawnBtn">DEPLOY AGENT</button>
+                <button id="toggleMockBtn" style="border-color: yellow; color: yellow;">SWITCH TO REAL SERVER</button>
             </div>
-
-            <div class="hint">DRAG TO PAN • SCROLL TO ZOOM</div>
         </div>
     </div>
 
     <script>
-        /**
-         * ------------------------------------------------------------------
-         * CONFIG
-         * ------------------------------------------------------------------
-         */
         const CONFIG = {
-            colors: {
-                bg: '#0f172a',
-                fog: '#000000',
-                ant: '#22d3ee',
-                wall: '#06b6d4',
-                ground: '#1e293b'
+            useMock: true,
+            apiBase: 'http://localhost:8080/api',
+            colors: { bg: '#0f172a', ground: '#1e293b', ant: '#22d3ee', antRed: '#ef4444', border: '#22d3ee' }
+        };
+
+        const API = {
+            getMap: async () => {
+                if (CONFIG.useMock) return MockServer.getMap();
+                const res = await fetch(`${CONFIG.apiBase}/map`);
+                return res.json();
             },
-            world: {
-                width: 3000,
-                height: 3000,
-                roomCount: 20
+            getState: async () => {
+                if (CONFIG.useMock) return MockServer.getState();
+                const res = await fetch(`${CONFIG.apiBase}/state`);
+                return res.json();
+            },
+            spawn: async () => {
+                if (CONFIG.useMock) return MockServer.spawn();
+                await fetch(`${CONFIG.apiBase}/spawn`, { method: 'POST' });
+            },
+            reset: async () => {
+                if (CONFIG.useMock) return MockServer.reset();
+                await fetch(`${CONFIG.apiBase}/reset`, { method: 'POST' });
             }
         };
 
-        /**
-         * ------------------------------------------------------------------
-         * MATH UTILS
-         * ------------------------------------------------------------------
-         */
-        const Vec2 = {
-            add: (v1, v2) => ({ x: v1.x + v2.x, y: v1.y + v2.y }),
-            sub: (v1, v2) => ({ x: v1.x - v2.x, y: v1.y - v2.y }),
-            dot: (v1, v2) => v1.x * v2.x + v1.y * v2.y,
-            mult: (v, s) => ({ x: v.x * s, y: v.y * s }),
-            dist: (v1, v2) => Math.hypot(v1.x - v2.x, v1.y - v2.y),
-            norm: (v) => {
-                const l = Math.hypot(v.x, v.y);
-                return l === 0 ? { x: 0, y: 0 } : { x: v.x / l, y: v.y / l };
+        // ------------------------------------------------------------------
+        // PHYSICS ENGINE
+        // ------------------------------------------------------------------
+        const Physics = {
+            isPointInPolygon: function (point, vs) {
+                // ray-casting algorithm based on
+                // https://github.com/substack/point-in-polygon
+                var x = point.x, y = point.y;
+                var inside = false;
+                for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+                    var xi = vs[i].x, yi = vs[i].y;
+                    var xj = vs[j].x, yj = vs[j].y;
+                    var intersect = ((yi > y) != (yj > y))
+                        && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                    if (intersect) inside = !inside;
+                }
+                return inside;
             },
-            normal: (p1, p2) => {
-                const dx = p2.x - p1.x;
-                const dy = p2.y - p1.y;
-                return Vec2.norm({ x: -dy, y: dx });
-            }
-        };
 
-        function getIntersection(p1, p2, p3, p4) {
-            const x1 = p1.x, y1 = p1.y, x2 = p2.x, y2 = p2.y;
-            const x3 = p3.x, y3 = p3.y, x4 = p4.x, y4 = p4.y;
-            const denom = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
-            if (denom == 0) return null;
-            const ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denom;
-            const ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denom;
-            if (ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1) {
-                return { x: x1 + ua * (x2 - x1), y: y1 + ua * (y2 - y1) };
-            }
-            return null;
-        }
-
-        // Point inside polygon check (Ray Casting)
-        function isPointInPoly(pt, poly) {
-            let inside = false;
-            for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-                const xi = poly[i].x, yi = poly[i].y;
-                const xj = poly[j].x, yj = poly[j].y;
-                const intersect = ((yi > pt.y) != (yj > pt.y)) && (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi);
-                if (intersect) inside = !inside;
-            }
-            return inside;
-        }
-
-        /**
-         * ------------------------------------------------------------------
-         * MAP DATA (MST Generation + Smart Collision)
-         * ------------------------------------------------------------------
-         */
-        class MapData {
-            constructor(width, height) {
-                this.width = width;
-                this.height = height;
-                this.rooms = []; // All Shapes (Rooms + Tunnels)
-                this.generateMSTMap();
-            }
-
-            generateMSTMap() {
-                this.rooms = [];
-                const nodes = [];
-
-                // 1. Scatter Rooms
-                // Always create a Surface Start Room
-                const surfaceRoom = this.createRoom(this.width / 2, 200, 200, 120);
-                nodes.push({ x: this.width / 2, y: 200, id: 0 });
-                this.rooms.push(surfaceRoom);
-
-                // Create Random Rooms
-                for (let i = 1; i < CONFIG.world.roomCount; i++) {
-                    const cx = 200 + Math.random() * (this.width - 400);
-                    const cy = 400 + Math.random() * (this.height - 600);
-
-                    const w = 150 + Math.random() * 200;
-                    const h = 150 + Math.random() * 200;
-
-                    const room = this.createRoom(cx, cy, w, h);
-                    this.rooms.push(room);
-                    nodes.push({ x: cx, y: cy, id: i });
-                }
-
-                // 2. Minimum Spanning Tree (Prim's Algorithm)
-                const edges = [];
-                const reached = new Set([0]); // Start with node 0
-                const unreached = new Set(nodes.slice(1).map(n => n.id));
-
-                while (unreached.size > 0) {
-                    let minDist = Infinity;
-                    let bestEdge = null;
-                    let bestNodeIndex = -1;
-
-                    for (const rId of reached) {
-                        const rNode = nodes[rId];
-                        for (const uId of unreached) {
-                            const uNode = nodes[uId];
-                            const d = Vec2.dist(rNode, uNode);
-                            if (d < minDist) {
-                                minDist = d;
-                                bestEdge = { p1: rNode, p2: uNode };
-                                bestNodeIndex = uId;
-                            }
-                        }
-                    }
-
-                    if (bestEdge) {
-                        edges.push(bestEdge);
-                        reached.add(bestNodeIndex);
-                        unreached.delete(bestNodeIndex);
-                    } else {
-                        break; // Should not happen
-                    }
-                }
-
-                // 3. Add Extra Random Lines (Cycles)
-                // Connect some close nodes that aren't directly connected
-                const extraEdges = Math.floor(nodes.length * 0.3);
-                for (let k = 0; k < extraEdges; k++) {
-                    const id1 = Math.floor(Math.random() * nodes.length);
-                    const id2 = Math.floor(Math.random() * nodes.length);
-                    if (id1 !== id2) {
-                        edges.push({ p1: nodes[id1], p2: nodes[id2] });
-                    }
-                }
-
-                // 4. Create Tunnels for Edges
-                edges.forEach(edge => {
-                    this.rooms.push(this.createTunnel(edge.p1, edge.p2, 60));
-                });
-            }
-
-            createRoom(cx, cy, w, h) {
-                const points = [];
-                const steps = 12; // Hexagon+ ish
-                for (let i = 0; i < steps; i++) {
-                    const ang = (i / steps) * Math.PI * 2;
-                    // Irregularity
-                    const radX = (w / 2) * (0.8 + Math.random() * 0.4);
-                    const radY = (h / 2) * (0.8 + Math.random() * 0.4);
-                    points.push({
-                        x: cx + Math.cos(ang) * radX,
-                        y: cy + Math.sin(ang) * radY
-                    });
-                }
-                return { points, type: 'room', center: { x: cx, y: cy } };
-            }
-
-            createTunnel(p1, p2, width) {
-                const norm = Vec2.normal(p1, p2);
-                const offset = Vec2.mult(norm, width / 2);
-                return {
-                    points: [
-                        Vec2.add(p1, offset),
-                        Vec2.add(p2, offset),
-                        Vec2.sub(p2, offset),
-                        Vec2.sub(p1, offset)
-                    ],
-                    type: 'tunnel'
-                };
-            }
-
-            // Is Point inside ANY room (Union)?
-            isValidPosition(x, y) {
-                const pt = { x, y };
-                for (const room of this.rooms) {
-                    if (isPointInPoly(pt, room.points)) return true;
+            isValid: function (x, y, rooms) {
+                for (let r of rooms) {
+                    const poly = r.points || r.poly;
+                    if (this.isPointInPolygon({ x, y }, poly)) return true;
                 }
                 return false;
             }
+        };
 
-            // Smart Collision: Ignores internal walls
-            checkCollision(p1, p2) {
-                if (this.isValidPosition(p2.x, p2.y)) return null;
-
-                let bestHit = null;
-                let minDst = Infinity;
-
-                // Check ALL walls
-                for (const room of this.rooms) {
-                    const pts = room.points;
-                    for (let i = 0; i < pts.length; i++) {
-                        const w1 = pts[i];
-                        const w2 = pts[(i + 1) % pts.length];
-
-                        const hit = getIntersection(p1, p2, w1, w2);
-                        if (hit) {
-                            // CRITICAL: Check if this wall is actually inside ANOTHER room
-                            // Shift hit point slightly into the "other side" to see if it's void or solid?
-                            // Better: Check if the Hit Point itself is inside any OTHER polygon (with a small epsilon)
-
-                            // Let's verify if the wall midpoint is inside another poly.
-                            const mid = { x: (w1.x + w2.x) / 2, y: (w1.y + w2.y) / 2 };
-                            let isInternal = false;
-
-                            for (const otherRoom of this.rooms) {
-                                if (otherRoom === room) continue;
-                                if (isPointInPoly(hit, otherRoom.points)) {
-                                    isInternal = true;
-                                    break;
-                                }
-                            }
-
-                            if (!isInternal) {
-                                const dst = Vec2.dist(p1, hit);
-                                if (dst < minDst) {
-                                    minDst = dst;
-                                    bestHit = { pos: hit, normal: Vec2.normal(w1, w2) };
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (!bestHit) {
-                    // Fallback bounce
-                    return { pos: p1, normal: Vec2.norm(Vec2.sub(p1, p2)) };
-                }
-                return bestHit;
-            }
-        }
-
-        /**
-         * ------------------------------------------------------------------
-         * ANT & GAME
-         * ------------------------------------------------------------------
-         */
-        class Ant {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
-                this.angle = Math.random() * Math.PI * 2;
-                this.speed = 2 + Math.random() * 2;
-            }
-
-            update(mapData) {
-                this.angle += (Math.random() - 0.5) * 0.2;
-                const vx = Math.cos(this.angle) * this.speed;
-                const vy = Math.sin(this.angle) * this.speed;
-
-                const nextX = this.x + vx;
-                const nextY = this.y + vy;
-
-                const collision = mapData.checkCollision({ x: this.x, y: this.y }, { x: nextX, y: nextY });
-
-                if (collision) {
-                    const n = collision.normal;
-                    const v = { x: vx, y: vy };
-                    const dot = Vec2.dot(v, n);
-                    const r = Vec2.sub(v, Vec2.mult(n, 2 * dot));
-
-                    this.angle = Math.atan2(r.y, r.x);
-                    this.x = collision.pos.x + n.x * 2;
-                    this.y = collision.pos.y + n.y * 2;
-                } else {
-                    this.x = nextX;
-                    this.y = nextY;
-                }
-            }
-
-            draw(ctx) {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
-                ctx.fillStyle = CONFIG.colors.ant;
-                ctx.shadowColor = CONFIG.colors.ant;
-                ctx.shadowBlur = 10;
-                ctx.fill();
-                ctx.shadowBlur = 0;
-            }
-        }
-
-        class Camera {
-            constructor() {
-                this.x = CONFIG.world.width / 2 - window.innerWidth / 2;
-                this.y = 0;
-                this.zoom = 0.6; // Improved start zoom
-                this.isDragging = false;
-                this.lastMouse = { x: 0, y: 0 };
-
-                const el = document.getElementById('game-container');
-                el.addEventListener('mousedown', e => {
-                    this.isDragging = true;
-                    this.lastMouse = { x: e.clientX, y: e.clientY };
-                    el.style.cursor = 'grabbing';
-                });
-                window.addEventListener('mouseup', () => {
-                    this.isDragging = false;
-                    el.style.cursor = 'grab';
-                });
-                window.addEventListener('mousemove', e => {
-                    if (!this.isDragging) return;
-                    const dx = e.clientX - this.lastMouse.x;
-                    const dy = e.clientY - this.lastMouse.y;
-                    this.x -= dx / this.zoom;
-                    this.y -= dy / this.zoom;
-                    this.lastMouse = { x: e.clientX, y: e.clientY };
-                });
-                el.addEventListener('wheel', e => {
-                    e.preventDefault();
-                    const zoomSpeed = 0.001;
-                    this.zoom += e.deltaY * -zoomSpeed;
-                    this.zoom = Math.min(Math.max(0.1, this.zoom), 3);
-                });
-            }
-
-            apply(ctx) {
-                ctx.save();
-                ctx.translate(window.innerWidth / 2, window.innerHeight / 2);
-                ctx.scale(this.zoom, this.zoom);
-                ctx.translate(-this.x - window.innerWidth / 2, -this.y - window.innerHeight / 2);
-            }
-        }
-
-        class Game {
+        // ------------------------------------------------------------------
+        // RENDERER
+        // ------------------------------------------------------------------
+        class GameClient {
             constructor() {
                 this.canvases = {
                     bg: document.getElementById('bgCanvas').getContext('2d'),
                     fog: document.getElementById('fogCanvas').getContext('2d'),
                     ant: document.getElementById('antCanvas').getContext('2d')
                 };
+                this.mapData = null;
+                this.agents = [];
+                this.init();
+            }
 
-                this.maskCanvas = document.createElement('canvas');
-                this.staticBg = document.createElement('canvas');
-
+            async init() {
+                window.onresize = () => this.resize();
                 this.resize();
 
-                this.map = new MapData(CONFIG.world.width, CONFIG.world.height);
-                this.camera = new Camera();
-                this.ants = [];
+                this.mapData = await API.getMap();
+                MockServer.map = this.mapData; // Sync for Client Prediction
 
                 this.drawStaticMap();
-                this.fillFog();
+                this.initFog();
 
-                window.addEventListener('resize', () => {
-                    this.resize();
-                    this.drawStaticMap();
-                    this.fillFog();
-                });
-
-                document.getElementById('spawnBtn').addEventListener('click', () => this.deploy());
-                document.getElementById('resetBtn').addEventListener('click', () => this.reset());
-
-                this.loop = this.loop.bind(this);
-                requestAnimationFrame(this.loop);
+                this.loop();
             }
 
             resize() {
-                const w = window.innerWidth;
-                const h = window.innerHeight;
-                for (let k in this.canvases) {
-                    this.canvases[k].canvas.width = w;
-                    this.canvases[k].canvas.height = h;
-                }
-                this.maskCanvas.width = CONFIG.world.width;
-                this.maskCanvas.height = CONFIG.world.height;
-                this.staticBg.width = CONFIG.world.width;
-                this.staticBg.height = CONFIG.world.height;
-            }
-
-            reset() {
-                this.ants = [];
-                this.map = new MapData(CONFIG.world.width, CONFIG.world.height);
-                this.drawStaticMap();
-                this.fillFog();
-                document.getElementById('antCount').innerText = 0;
-            }
-
-            deploy() {
-                // Deploy in Surface Room (always index 0)
-                const room = this.map.rooms[0];
-                this.ants.push(new Ant(room.center.x, room.center.y));
-                document.getElementById('antCount').innerText = this.ants.length;
+                const w = window.innerWidth, h = window.innerHeight;
+                for (let k in this.canvases) { this.canvases[k].canvas.width = w; this.canvases[k].canvas.height = h; }
+                if (this.mapData) this.drawStaticMap();
             }
 
             drawStaticMap() {
-                const mCtx = this.maskCanvas.getContext('2d');
-                mCtx.clearRect(0, 0, this.maskCanvas.width, this.maskCanvas.height);
+                if (!this.mapData) return;
 
-                mCtx.fillStyle = '#ffffff';
-                this.map.rooms.forEach(room => {
+                const mCanvas = document.createElement('canvas');
+                mCanvas.width = Math.max(3000, this.mapData.width);
+                mCanvas.height = Math.max(3000, this.mapData.height);
+                const mCtx = mCanvas.getContext('2d');
+
+                mCtx.fillStyle = 'white';
+                this.mapData.rooms.forEach(r => {
                     mCtx.beginPath();
-                    room.points.forEach((p, i) => {
-                        if (i === 0) mCtx.moveTo(p.x, p.y);
-                        else mCtx.lineTo(p.x, p.y);
-                    });
+                    const ptrs = r.points || r.poly;
+                    ptrs.forEach((p, i) => i === 0 ? mCtx.moveTo(p.x, p.y) : mCtx.lineTo(p.x, p.y));
                     mCtx.closePath();
                     mCtx.fill();
                 });
 
-                const bCtx = this.staticBg.getContext('2d');
-                bCtx.clearRect(0, 0, CONFIG.world.width, CONFIG.world.height);
+                const bCtx = document.createElement('canvas').getContext('2d');
+                bCtx.canvas.width = mCanvas.width; bCtx.canvas.height = mCanvas.height;
 
-                bCtx.save();
-                bCtx.shadowBlur = 20;
-                bCtx.shadowColor = CONFIG.colors.wall;
-                bCtx.drawImage(this.maskCanvas, 0, 0);
-                bCtx.restore();
+                // Grid
+                bCtx.strokeStyle = 'rgba(34, 211, 238, 0.05)';
+                bCtx.lineWidth = 1;
+                for (let x = 0; x < mCanvas.width; x += 100) { bCtx.beginPath(); bCtx.moveTo(x, 0); bCtx.lineTo(x, mCanvas.height); bCtx.stroke(); }
+                for (let y = 0; y < mCanvas.height; y += 100) { bCtx.beginPath(); bCtx.moveTo(0, y); bCtx.lineTo(mCanvas.width, y); bCtx.stroke(); }
 
+                // Ground
                 bCtx.globalCompositeOperation = 'source-over';
                 bCtx.fillStyle = CONFIG.colors.ground;
-                this.map.rooms.forEach(room => {
+                this.mapData.rooms.forEach(r => {
                     bCtx.beginPath();
-                    room.points.forEach((p, i) => {
-                        if (i === 0) bCtx.moveTo(p.x, p.y);
-                        else bCtx.lineTo(p.x, p.y);
-                    });
-                    bCtx.closePath();
+                    const ptrs = r.points || r.poly;
+                    ptrs.forEach((p, i) => i === 0 ? bCtx.moveTo(p.x, p.y) : bCtx.lineTo(p.x, p.y));
                     bCtx.fill();
                 });
-            }
 
-            fillFog() {
-                this.worldFog = document.createElement('canvas');
-                this.worldFog.width = CONFIG.world.width;
-                this.worldFog.height = CONFIG.world.height;
-                this.fogCtx = this.worldFog.getContext('2d');
-                this.fogCtx.fillStyle = 'black';
-                this.fogCtx.fillRect(0, 0, CONFIG.world.width, CONFIG.world.height);
-            }
-
-            loop() {
-                const { bg, ant, fog } = this.canvases;
-                const w = window.innerWidth, h = window.innerHeight;
-
-                this.ants.forEach(a => {
-                    a.update(this.map);
-                    this.fogCtx.globalCompositeOperation = 'destination-out';
-                    this.fogCtx.beginPath();
-                    this.fogCtx.arc(a.x, a.y, 80, 0, Math.PI * 2); // Big Reveal
-                    this.fogCtx.fillStyle = 'black';
-                    this.fogCtx.fill();
-                    this.fogCtx.globalCompositeOperation = 'source-over';
+                // Dashed Border
+                bCtx.strokeStyle = CONFIG.colors.border;
+                bCtx.lineWidth = 2;
+                bCtx.setLineDash([5, 15]);
+                bCtx.shadowColor = CONFIG.colors.border;
+                bCtx.shadowBlur = 25;
+                this.mapData.rooms.forEach(r => {
+                    bCtx.beginPath();
+                    const ptrs = r.points || r.poly;
+                    ptrs.forEach((p, i) => i === 0 ? bCtx.moveTo(p.x, p.y) : bCtx.lineTo(p.x, p.y));
+                    bCtx.closePath();
+                    bCtx.stroke();
                 });
+                bCtx.shadowBlur = 0;
+                bCtx.setLineDash([]);
 
-                bg.clearRect(0, 0, w, h);
-                ant.clearRect(0, 0, w, h);
-                fog.clearRect(0, 0, w, h);
+                this.bgImage = bCtx.canvas;
+            }
 
-                this.camera.apply(bg);
-                bg.drawImage(this.staticBg, 0, 0);
+            initFog() {
+                if (!this.mapData) return;
+                this.fogDetails = document.createElement('canvas');
+                this.fogDetails.width = Math.max(3000, this.mapData.width);
+                this.fogDetails.height = Math.max(3000, this.mapData.height);
+                const ctx = this.fogDetails.getContext('2d');
+                ctx.fillStyle = 'black';
+                ctx.fillRect(0, 0, this.fogDetails.width, this.fogDetails.height);
+            }
+
+            async loop() {
+                try {
+                    const state = await API.getState();
+                    this.agents = state.agents || [];
+                    document.getElementById('antCount').innerText = this.agents.length;
+
+                    const fCtx = this.fogDetails.getContext('2d');
+                    fCtx.globalCompositeOperation = 'destination-out';
+
+                    this.agents.forEach(a => {
+                        const g = fCtx.createRadialGradient(a.x, a.y, 10, a.x, a.y, 60);
+                        g.addColorStop(0, 'rgba(0,0,0,1)');
+                        g.addColorStop(1, 'rgba(0,0,0,0)');
+                        fCtx.fillStyle = g;
+                        fCtx.beginPath();
+                        fCtx.arc(a.x, a.y, 60, 0, Math.PI * 2);
+                        fCtx.fill();
+                    });
+                    fCtx.globalCompositeOperation = 'source-over';
+
+                } catch (e) { }
+
+                this.render();
+                requestAnimationFrame(() => this.loop());
+            }
+
+            render() {
+                const { bg, ant, fog } = this.canvases;
+                const w = bg.canvas.width, h = bg.canvas.height;
+                bg.clearRect(0, 0, w, h); ant.clearRect(0, 0, w, h); fog.clearRect(0, 0, w, h);
+
+                CAM.apply(bg);
+                if (this.bgImage) bg.drawImage(this.bgImage, 0, 0);
                 bg.restore();
 
-                this.camera.apply(ant);
-                this.ants.forEach(a => a.draw(ant));
+                CAM.apply(ant);
+                this.agents.forEach(a => {
+                    const color = a.isRed ? CONFIG.colors.antRed : CONFIG.colors.ant;
+                    ant.fillStyle = color;
+                    ant.shadowColor = color;
+                    ant.shadowBlur = 10;
+                    ant.beginPath();
+                    ant.arc(a.x, a.y, 3, 0, Math.PI * 2);
+                    ant.fill();
+                });
+                ant.shadowBlur = 0;
                 ant.restore();
 
-                fog.save();
-                this.camera.apply(fog);
-                fog.drawImage(this.worldFog, 0, 0);
+                CAM.apply(fog);
+                if (this.fogDetails) fog.drawImage(this.fogDetails, 0, 0);
                 fog.restore();
-
-                requestAnimationFrame(this.loop);
             }
         }
 
-        const game = new Game();
+        const CAM = {
+            x: 0, y: 0, zoom: 0.6,
+            apply(ctx) {
+                ctx.save();
+                ctx.translate(window.innerWidth / 2, window.innerHeight / 2);
+                ctx.scale(this.zoom, this.zoom);
+                ctx.translate(-this.x - window.innerWidth / 2, -this.y - window.innerHeight / 2);
+            }
+        };
 
+        // Camera Logic
+        let isDrag = false, lx = 0, ly = 0;
+        const ctr = document.getElementById('game-container');
+        ctr.onmousedown = e => { isDrag = true; lx = e.clientX; ly = e.clientY; };
+        window.onmouseup = () => isDrag = false;
+        window.onmousemove = e => {
+            if (isDrag) { CAM.x -= (e.clientX - lx) / CAM.zoom; CAM.y -= (e.clientY - ly) / CAM.zoom; lx = e.clientX; ly = e.clientY; }
+        };
+        ctr.onwheel = e => { CAM.zoom += e.deltaY * -0.001; CAM.zoom = Math.min(Math.max(0.1, CAM.zoom), 4); };
+
+        document.getElementById('spawnBtn').onclick = () => API.spawn();
+        document.getElementById('resetBtn').onclick = async () => { await API.reset(); client.mapData = await API.getMap(); MockServer.map = client.mapData; client.drawStaticMap(); client.initFog(); };
+        const modeLabel = document.getElementById('modeLabel');
+        document.getElementById('toggleMockBtn').onclick = () => {
+            CONFIG.useMock = !CONFIG.useMock;
+            modeLabel.innerText = CONFIG.useMock ? "MODE: MOCK SERVER" : "MODE: REAL JAVA BACKEND";
+            modeLabel.style.color = CONFIG.useMock ? "yellow" : "green";
+            API.reset();
+        };
+
+        // MOCK SERVER (Updated with Physics)
+        const MockServer = {
+            map: null, agents: [],
+            getMap: function () { if (!this.map) this.genMap(); return this.map; },
+            getState: function () {
+                // Client-side physics (Prediction/Simulation)
+                this.agents.forEach(a => {
+                    a.angle += (Math.random() - 0.5) * 0.2;
+                    const nextX = a.x + Math.cos(a.angle) * 3;
+                    const nextY = a.y + Math.sin(a.angle) * 3;
+
+                    // Collision Check
+                    if (Physics.isValid(nextX, nextY, this.map.rooms)) {
+                        a.x = nextX; a.y = nextY;
+                    } else {
+                        a.angle = Math.random() * Math.PI * 2; // Bounce/Rotate
+                    }
+                });
+                return { agents: this.agents };
+            },
+            spawn: function () {
+                const isRed = Math.random() < 0.2;
+                // Spawn at Map Center (Room 0)
+                const start = this.map.rooms[0];
+                // Simple avg of points for true center approximation if 'center' is missing
+                let cx = 0, cy = 0;
+                if (start.points) { start.points.forEach(p => { cx += p.x; cy += p.y }); cx /= start.points.length; cy /= start.points.length; }
+                else { cx = 1500; cy = 200; }
+
+                this.agents.push({ x: cx, y: cy, angle: 0, isRed });
+            },
+            reset: function () { this.agents = []; this.genMap(); },
+            genMap: function () {
+                // Client-Side High-Fidelity Gen (Use same logic as before but store 'points')
+                this.map = { width: 3000, height: 3000, rooms: [] };
+                const nodes = [];
+                const addRoom = (cx, cy, w, h) => {
+                    const pts = []; const steps = 20;
+                    for (let i = 0; i < steps; i++) {
+                        let a = i / steps * 6.28; let n = 0.7 + Math.random() * 0.6;
+                        pts.push({ x: cx + Math.cos(a) * w / 2 * n, y: cy + Math.sin(a) * h / 2 * n });
+                    }
+                    this.map.rooms.push({ points: pts });
+                    nodes.push({ x: cx, y: cy });
+                };
+
+                addRoom(1500, 200, 200, 120);
+                for (let i = 0; i < 20; i++) addRoom(200 + Math.random() * 2600, 400 + Math.random() * 2400, 150 + Math.random() * 150, 150 + Math.random() * 150);
+
+                // Simplified Tunnels (Rects for visibility in Mock)
+                nodes.forEach((n, i) => {
+                    if (i == 0) return;
+                    let range = 1000, best = nodes[0];
+                    for (let j = 0; j < i; j++) { let d = Math.hypot(n.x - nodes[j].x, n.y - nodes[j].y); if (d < range) { range = d; best = nodes[j]; } }
+                    const p1 = n, p2 = best;
+                    // Simple Box Tunnel
+                    const ang = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+                    const w = 20;
+                    const dx = Math.cos(ang + 1.57) * w; const dy = Math.sin(ang + 1.57) * w;
+                    this.map.rooms.push({
+                        points: [
+                            { x: p1.x + dx, y: p1.y + dy }, { x: p2.x + dx, y: p2.y + dy }, { x: p2.x - dx, y: p2.y - dy }, { x: p1.x - dx, y: p1.y - dy }
+                        ]
+                    });
+                });
+            }
+        };
+
+        modeLabel.innerText = "MODE: MOCK SERVER";
+        const client = new GameClient();
     </script>
 </body>
 
