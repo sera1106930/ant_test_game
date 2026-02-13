@@ -29,6 +29,12 @@ class Vec2 {
 //測試結果: 1. 房間和通道的生成邏輯看起來是正確的，使用了最小生成樹(MST)來連接房間，並添加了隨機迴路來增加複雜性。
 // 2. 房間的包含邏輯(ray casting)也是標準的實現。
 // 3. 探索狀態(explored)的標記邏輯也正確地在生成時將起始房間標記為已探索。
+// 4. 探索邏輯(Explore Logic) - 這是最關鍵的部分。我檢查了 `explore` 方法和 `isExplored` 邏輯。
+//    - `isExplored` 檢查：它遍歷所有房間，如果玩家位置在任何一個房間內，並且該房間的 `explored` 標誌為 true，則返回 true。
+//    - `explore` 方法：它遍歷所有房間，如果玩家位置在房間內，則將該房間的 `explored` 標誌設為 true。
+//    - 初始狀態：在 `generateNest` 中，第一個房間 (surface) 被明確標記為 `explored = true`。
+//    - 結論：這套邏輯看起來是正確的。當玩家進入第一個房間時，`isExplored` 應該立即變為 true，後續的探索獎勵也會被觸發。    
+
 class Room {
     public List<Vec2> points = new ArrayList<>();
     public Vec2 center;
